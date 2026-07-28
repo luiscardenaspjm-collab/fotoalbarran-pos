@@ -1,0 +1,14 @@
+{
+  "name": "foto-albarran-pos",
+  "version": "3.0.0",
+  "description": "Sistema POS de Foto Albarrán (mostrador + dashboard), con persistencia en Turso",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "migrate": "node migrate.js"
+  },
+  "dependencies": {
+    "@libsql/client": "^0.14.0",
+    "dotenv": "^16.4.5"
+  }
+}

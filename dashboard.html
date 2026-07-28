@@ -1,0 +1,685 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Foto Albarrán · Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=DM+Sans:wght@400;600;700&display=swap" rel="stylesheet"/>
+<style>
+:root{--K:#0E0E0E;--Y:#FFD100;--W:#FAFAF8;--off:#F7F6F2;--brd:#E4E3DC;--mute:#9A9991;--green:#1a8a3a;--orange:#E05A00}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'DM Sans',sans-serif;background:var(--off);color:var(--K);min-height:100vh}
+/* Header */
+.header{background:var(--K);padding:14px 24px;display:flex;align-items:center;gap:16px;position:sticky;top:0;z-index:100}
+.brand-sub{font-size:10px;color:rgba(255,255,255,.4);font-weight:600;letter-spacing:1px;text-transform:uppercase;margin-top:2px}
+.hbtns{display:flex;gap:8px;margin-left:auto}
+.bY{background:var(--Y);color:var(--K);border:none;border-radius:8px;padding:8px 16px;font-size:12px;font-weight:700;font-family:'DM Sans',sans-serif;cursor:pointer}
+.bO{background:transparent;color:var(--Y);border:2px solid rgba(255,255,255,.2);border-radius:8px;padding:8px 16px;font-size:12px;font-weight:700;font-family:'DM Sans',sans-serif;cursor:pointer}
+.bO:hover{border-color:var(--Y)}
+/* Tabs */
+.tab-nav{background:var(--W);border-bottom:2px solid var(--brd);padding:0 24px;display:flex;gap:4px;overflow-x:auto}
+.tab-btn{padding:14px 20px;border:none;background:none;font-size:13px;font-weight:600;font-family:'DM Sans',sans-serif;cursor:pointer;color:var(--mute);border-bottom:3px solid transparent;white-space:nowrap;transition:all .2s}
+.tab-btn.active,.tab-btn:hover{color:var(--K);border-bottom-color:var(--K)}
+/* Tab content */
+.tab-content{display:none;padding:24px}
+.tab-content.active{display:block}
+/* KPIs */
+.kpi-row{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:24px}
+@media(max-width:900px){.kpi-row{grid-template-columns:repeat(3,1fr)}}
+@media(max-width:600px){.kpi-row{grid-template-columns:1fr 1fr}}
+.kpi{background:var(--W);border:1px solid var(--brd);border-radius:12px;padding:16px}
+.kpi-l{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--mute);margin-bottom:6px}
+.kpi-v{font-family:'Playfair Display',serif;font-size:28px;font-weight:700}
+/* Cards */
+.card{background:var(--W);border:1px solid var(--brd);border-radius:12px;overflow:hidden;margin-bottom:20px}
+.card-h{padding:16px 20px;border-bottom:1px solid var(--brd);display:flex;justify-content:space-between;align-items:center}
+.card-title{font-size:14px;font-weight:700}
+.card-sub{font-size:12px;color:var(--mute)}
+/* Table */
+table{width:100%;border-collapse:collapse;font-size:12px}
+th{padding:10px 12px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--mute);text-align:left;border-bottom:2px solid var(--brd);white-space:nowrap}
+td{padding:10px 12px;border-bottom:1px solid var(--brd)}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:var(--off)}
+.mo{font-family:'Playfair Display',serif;font-weight:700}
+/* Badges */
+.badge{display:inline-block;padding:3px 9px;border-radius:10px;font-size:10px;font-weight:700}
+.badge-pend{background:#FFF3E0;color:#E05A00}
+.badge-listo{background:#F0FFF4;color:var(--green)}
+.badge-ent{background:#E8F5E9;color:#2E7D32}
+/* Buttons */
+.bd{background:none;border:none;cursor:pointer;font-size:16px;padding:4px 6px;border-radius:6px}
+.bd:hover{background:var(--off)}
+/* Filter bar */
+.filter-bar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:16px}
+.fi{padding:8px 12px;border:1px solid var(--brd);border-radius:8px;font-size:13px;font-family:'DM Sans',sans-serif;background:var(--W)}
+.bC{padding:7px 14px;background:var(--off);border:1px solid var(--brd);border-radius:8px;font-size:12px;font-weight:600;font-family:'DM Sans',sans-serif;cursor:pointer}
+.bG{padding:7px 14px;background:var(--green);color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:700;font-family:'DM Sans',sans-serif;cursor:pointer}
+/* Inventory */
+.inv-body{max-width:1200px;margin:0 auto}
+.eficiencia-banner{background:var(--K);color:#fff;border-radius:12px;padding:20px 24px;display:flex;align-items:center;gap:20px;margin-bottom:20px}
+.ef-icon{font-size:32px}
+.ef-title{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--Y);margin-bottom:4px}
+.ef-val{font-family:'Playfair Display',serif;font-size:28px;font-weight:700;color:#fff}
+.ef-sub{font-size:11px;color:rgba(255,255,255,.5);margin-top:2px}
+.inv-card-full{background:var(--W);border:1px solid var(--brd);border-radius:12px;overflow:hidden;margin-bottom:20px}
+.inv-ch{padding:14px 18px;border-bottom:1px solid var(--brd);display:flex;justify-content:space-between;align-items:center}
+.inv-ct{font-size:14px;font-weight:700}
+.inv-cc{font-size:12px;color:var(--mute)}
+.stock-row{display:flex;justify-content:space-between;align-items:center;padding:14px 18px;border-bottom:1px solid var(--brd)}
+.stock-row:last-child{border-bottom:none}
+.stock-name{font-weight:700;font-size:13px;margin-bottom:2px}
+.stock-detail{font-size:11px;color:var(--mute)}
+.stock-qty{font-family:'Playfair Display',serif;font-size:24px;font-weight:700}
+.stock-qty.ok{color:var(--green)}
+.stock-qty.low{color:#E05A00}
+.stock-qty.out{color:#c62828}
+/* Alert badges */
+.alerta-badge{display:inline-block;padding:3px 10px;border-radius:10px;font-size:10px;font-weight:700}
+.alerta-ok{background:#F0FFF4;color:var(--green)}
+.alerta-low{background:#FFF3E0;color:#E05A00}
+.alerta-out{background:#FFEBEE;color:#c62828}
+/* Progress bars */
+.progress-bar-wrap{padding:8px 18px 14px;border-bottom:1px solid var(--brd)}
+.progress-bar-wrap:last-child{border-bottom:none}
+.progress-bar-label{display:flex;justify-content:space-between;font-size:11px;color:var(--mute);margin-bottom:5px}
+.progress-bar-track{height:8px;background:var(--brd);border-radius:4px;overflow:hidden}
+.progress-bar-fill{height:100%;border-radius:4px;transition:width .5s}
+.pb-ok{background:var(--green)}
+.pb-low{background:#E05A00}
+.pb-out{background:#c62828}
+/* Cat tabs */
+.cat-inv-btn{padding:8px 16px;border:2px solid var(--brd);border-radius:20px;background:var(--W);font-size:12px;font-weight:600;font-family:'DM Sans',sans-serif;cursor:pointer;transition:all .2s;color:var(--mute)}
+.cat-inv-btn:hover{border-color:var(--K);color:var(--K)}
+.cat-inv-btn.active{background:var(--K);color:var(--Y);border-color:var(--K)}
+/* Min input */
+.min-input-dash{width:55px;border:1px solid var(--brd);border-radius:5px;padding:3px 7px;font-size:11px;font-family:'DM Sans',sans-serif;text-align:center}
+/* Analytics grid */
+.analytics-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:20px}
+@media(max-width:700px){.analytics-grid{grid-template-columns:1fr}}
+/* Consumo */
+.consumo-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px;padding:16px}
+.consumo-card{background:var(--off);border:1px solid var(--brd);border-radius:10px;padding:14px}
+.consumo-label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--mute);margin-bottom:8px}
+.consumo-val{font-family:'Playfair Display',serif;font-size:28px;font-weight:700}
+.consumo-sub{font-size:10px;color:var(--mute);margin-top:2px}
+/* Historial */
+.hist-table th,.hist-table td{padding:9px 14px}
+/* Modal editar */
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:1000;align-items:center;justify-content:center}
+.modal-overlay.open{display:flex}
+.modal-box{background:#fff;border-radius:16px;padding:28px;width:460px;max-width:95vw;box-shadow:0 20px 60px rgba(0,0,0,.3)}
+.modal-title{font-family:'Playfair Display',serif;font-size:22px;margin-bottom:4px}
+.modal-sub{font-size:12px;color:var(--mute);margin-bottom:20px}
+.modal-grid{display:grid;gap:12px}
+.modal-label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--mute);display:block;margin-bottom:4px}
+.modal-input{width:100%;padding:10px 12px;border:1.5px solid var(--brd);border-radius:8px;font-size:13px;font-family:'DM Sans',sans-serif}
+.modal-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.modal-btns{display:flex;gap:10px;margin-top:20px}
+.btn-cancel{flex:1;padding:12px;background:var(--off);border:2px solid var(--brd);border-radius:10px;font-size:13px;font-weight:700;font-family:'DM Sans',sans-serif;cursor:pointer}
+.btn-save{flex:2;padding:12px;background:var(--K);color:var(--Y);border:none;border-radius:10px;font-size:13px;font-weight:700;font-family:'DM Sans',sans-serif;cursor:pointer}
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="header">
+  <div>
+    <div style="font-family:'Playfair Display',serif;font-size:20px;font-weight:700;color:#fff">Foto Albarrán</div>
+    <div class="brand-sub">Dashboard · León, Guanajuato</div>
+  </div>
+  <div class="hbtns">
+    <button class="bY" onclick="recargarTab()">↻ Actualizar</button>
+    <button class="bO" onclick="exportarCSV()" id="btnExport">⬇ Exportar CSV</button>
+  </div>
+</div>
+
+<!-- TAB NAV -->
+<nav class="tab-nav">
+  <button class="tab-btn active" onclick="switchTab('ventas',this)">📊 &nbsp;Informe de Ventas</button>
+  <button class="tab-btn" onclick="switchTab('inventario',this)">📦 &nbsp;Gestión de Inventarios</button>
+  <button class="tab-btn" onclick="switchTab('historial',this)">📋 &nbsp;Historial de Ingresos</button>
+</nav>
+
+<!-- ══ TAB 1: VENTAS ══ -->
+<div id="tabVentas" class="tab-content active">
+
+  <!-- KPIs -->
+  <div class="kpi-row">
+    <div class="kpi"><div class="kpi-l">Pedidos</div><div class="kpi-v" id="k1">—</div></div>
+    <div class="kpi"><div class="kpi-l">Ventas totales</div><div class="kpi-v" id="k2">—</div></div>
+    <div class="kpi"><div class="kpi-l">Cobrado</div><div class="kpi-v" id="k3">—</div></div>
+    <div class="kpi"><div class="kpi-l">Por cobrar</div><div class="kpi-v" id="k4">—</div></div>
+    <div class="kpi"><div class="kpi-l">Pendientes</div><div class="kpi-v" id="k5">—</div></div>
+  </div>
+
+  <!-- Analytics -->
+  <div class="analytics-grid">
+    <div class="card">
+      <div class="card-h"><span class="card-title">🏆 Top Molduras</span></div>
+      <div id="topMolduras" style="padding:12px 18px;font-size:13px;color:var(--mute)">Cargando...</div>
+    </div>
+    <div class="card">
+      <div class="card-h"><span class="card-title">🎨 Top Colores</span></div>
+      <div id="topColores" style="padding:12px 18px;font-size:13px;color:var(--mute)">Cargando...</div>
+    </div>
+  </div>
+
+  <!-- Filter bar -->
+  <div class="filter-bar">
+    <input type="date" id="fs" class="fi" oninput="renderT()"/>
+    <span style="font-size:12px;color:var(--mute)">a</span>
+    <input type="date" id="fe" class="fi" oninput="renderT()"/>
+    <input type="text" id="fq" class="fi" placeholder="🔍 Cliente, nota, servicio..." oninput="renderT()" style="flex:1;min-width:160px"/>
+    <button class="bC" onclick="document.getElementById('fs').value='';document.getElementById('fe').value='';document.getElementById('fq').value='';renderT()">✕ Limpiar</button>
+    <button class="bG" onclick="filtrarHoy()">📦 Entregar hoy</button>
+  </div>
+
+  <!-- Tabla pedidos -->
+  <div class="card" style="overflow-x:auto">
+    <table id="tbl">
+      <thead><tr>
+        <th>#</th><th>Fecha</th><th>Cliente</th><th>Servicio</th>
+        <th>Moldura</th><th>Color</th><th>ML</th><th>Sobrante</th>
+        <th>Total</th><th>Anticipo</th><th>Saldo</th><th>Estado</th><th></th>
+      </tr></thead>
+      <tbody id="tbody"><tr><td colspan="13" style="padding:30px;text-align:center;color:var(--mute)">Cargando...</td></tr></tbody>
+    </table>
+  </div>
+  <div style="font-size:11px;color:var(--mute);margin-top:4px" id="cp"></div>
+</div>
+
+<!-- ══ TAB 2: INVENTARIO ══ -->
+<div id="tabInventario" class="tab-content">
+<div class="inv-body">
+
+  <!-- Banner -->
+  <div class="eficiencia-banner">
+    <div class="ef-icon">📄</div>
+    <div>
+      <div class="ef-title">Pulgadas² impresas</div>
+      <div class="ef-val" id="efTotal">—</div>
+      <div class="ef-sub">Consumo de tinta total</div>
+    </div>
+    <div style="margin-left:auto;text-align:right">
+      <div class="ef-title">Hojas ahorradas</div>
+      <div class="ef-val" id="efAhorradas">—</div>
+      <div class="ef-sub">♻️ Sobrante reutilizado</div>
+    </div>
+  </div>
+
+  <!-- Category tabs -->
+  <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px">
+    <button class="cat-inv-btn active" onclick="selInvCat('papel',this)">📄 Papel</button>
+    <button class="cat-inv-btn" onclick="selInvCat('portarretratos',this)">🖼️ Portarretratos</button>
+    <button class="cat-inv-btn" onclick="selInvCat('marcosStock',this)">🛒 Marcos Stock</button>
+    <button class="cat-inv-btn" onclick="selInvCat('cristales',this)">🔲 Cristales</button>
+    <button class="cat-inv-btn" onclick="selInvCat('mdf',this)">🪵 MDF</button>
+    <button class="cat-inv-btn" onclick="selInvCat('insumos',this)">📦 Insumos</button>
+    <button class="cat-inv-btn" onclick="selInvCat('consumo',this)">📊 Consumo</button>
+  </div>
+
+  <div id="invCatContent"><div style="padding:40px;text-align:center;color:var(--mute)">Cargando inventario...</div></div>
+
+</div>
+</div>
+
+<!-- ══ TAB 3: HISTORIAL ══ -->
+<div id="tabHistorial" class="tab-content">
+<div class="inv-body">
+  <div class="eficiencia-banner" style="background:var(--K)">
+    <div class="ef-icon">📋</div>
+    <div>
+      <div class="ef-title">Historial de Ingresos</div>
+      <div class="ef-val" id="histTotal" style="font-size:22px">—</div>
+      <div class="ef-sub">Últimos 200 movimientos</div>
+    </div>
+    <button onclick="cargarHistorial()" class="bY" style="margin-left:auto;padding:9px 18px">↻ Actualizar</button>
+  </div>
+  <div class="inv-card-full">
+    <div style="overflow-x:auto">
+      <table class="hist-table">
+        <thead><tr><th>Fecha</th><th>Tipo</th><th>Producto</th><th>Cantidad</th></tr></thead>
+        <tbody id="histTbody"><tr><td colspan="4" style="padding:30px;text-align:center;color:var(--mute)">Cargando...</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- MODAL EDITAR -->
+<div id="editModal" class="modal-overlay">
+  <div class="modal-box">
+    <div class="modal-title">Editar Pedido <span id="editNota" style="color:#B8860B"></span></div>
+    <div class="modal-sub">Solo se modifican los campos que cambies</div>
+    <div class="modal-grid">
+      <div><label class="modal-label">Cliente</label><input id="editCliente" class="modal-input" placeholder="Nombre"/></div>
+      <div><label class="modal-label">Teléfono</label><input id="editTel" class="modal-input" placeholder="477 123 4567"/></div>
+      <div class="modal-row">
+        <div><label class="modal-label">Anticipo ($)</label><input id="editAnticipo" type="number" class="modal-input" min="0"/></div>
+        <div><label class="modal-label">Fecha del pedido</label><input id="editFechaPedido" type="date" class="modal-input"/></div>
+      </div>
+      <div class="modal-row">
+        <div><label class="modal-label">Fecha de entrega</label><input id="editFecha" type="date" class="modal-input"/></div>
+        <div></div>
+      </div>
+      <div><label class="modal-label">Observaciones</label><textarea id="editObs" class="modal-input" rows="2" placeholder="Notas..."></textarea></div>
+    </div>
+    <div class="modal-btns">
+      <button class="btn-cancel" onclick="cerrarEditar()">Cancelar</button>
+      <button class="btn-save" onclick="guardarEdicion()">✅ Guardar cambios</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const BASE=''; // mismo origen: funciona en local (node server.js) y en Railway
+const mx=n=>'$'+Math.round(n).toLocaleString('es-MX');
+const DIMS={'4x6':{w:4,h:6},'5x7':{w:5,h:7},'6x8':{w:6,h:8},'8x10':{w:8,h:10},'8x11':{w:8.5,h:11}};
+
+var PEDIDOS=[];
+var INV_DATA=null;
+var VENTAS_DATA=[];
+var INV_CAT='papel';
+var EDIT_NOTA=null;
+
+// ── TAB SWITCHING ─────────────────────────────────────────────────────────────
+function switchTab(tab,btn){
+  document.querySelectorAll('.tab-content').forEach(el=>el.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById('tab'+tab.charAt(0).toUpperCase()+tab.slice(1)).classList.add('active');
+  if(btn) btn.classList.add('active');
+  document.getElementById('btnExport').style.display=tab==='ventas'?'':'none';
+  if(tab==='ventas') cargar();
+  if(tab==='inventario') cargarInventario();
+  if(tab==='historial') cargarHistorial();
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+function recargarTab(){
+  var a=document.querySelector('.tab-btn.active');
+  if(!a) return;
+  if(a.textContent.includes('Ventas')) cargar();
+  else if(a.textContent.includes('Inventario')) cargarInventario();
+  else cargarHistorial();
+}
+
+// ── VENTAS ────────────────────────────────────────────────────────────────────
+function cargar(){
+  fetch(BASE+'/ventas').then(r=>r.json()).then(d=>{
+    PEDIDOS=(d.pedidos||[]).slice().reverse();
+    renderK(); renderA(); renderT();
+  }).catch(e=>console.warn('Ventas error:',e.message));
+}
+function renderK(){
+  var v=0,c=0,pe=0;
+  PEDIDOS.forEach(p=>{v+=(p.total||0);c+=(p.anticipo||0);if((p.total||0)>(p.anticipo||0))pe++;});
+  document.getElementById('k1').textContent=PEDIDOS.length;
+  document.getElementById('k2').textContent=mx(v);
+  document.getElementById('k3').textContent=mx(c);
+  document.getElementById('k4').textContent=mx(v-c);
+  document.getElementById('k5').textContent=pe;
+}
+function renderA(){
+  var mc={},cc={};
+  PEDIDOS.forEach(p=>{
+    if(p.moldura&&p.moldura!=='—'){
+      mc[p.moldura]=(mc[p.moldura]||0)+1;
+      if(p.color&&p.color!=='—'){var k=p.moldura+' · '+p.color;cc[k]=(cc[k]||0)+1;}
+    }
+  });
+  var tm=Object.keys(mc).map(k=>[k,mc[k]]).sort((a,b)=>b[1]-a[1]).slice(0,8);
+  var tc=Object.keys(cc).map(k=>[k,cc[k]]).sort((a,b)=>b[1]-a[1]).slice(0,8);
+  document.getElementById('topMolduras').innerHTML=tm.length?tm.map(([k,v])=>
+    `<div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--brd)"><span>${k}</span><strong>${v}</strong></div>`
+  ).join(''):'<div style="color:var(--mute)">Sin datos aún</div>';
+  document.getElementById('topColores').innerHTML=tc.length?tc.map(([k,v])=>
+    `<div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--brd)"><span>${k}</span><strong>${v}</strong></div>`
+  ).join(''):'<div style="color:var(--mute)">Sin datos aún</div>';
+}
+function renderT(){
+  var fs=document.getElementById('fs').value;
+  var fe=document.getElementById('fe').value;
+  var fq=(document.getElementById('fq').value||'').toLowerCase();
+  function fechaISO(str){
+    if(!str) return '';
+    var p=str.split('/');
+    if(p.length===3) return p[2]+'-'+p[1].padStart(2,'0')+'-'+p[0].padStart(2,'0');
+    return str;
+  }
+  var list=PEDIDOS.filter(p=>{
+    var fiso=fechaISO(p.fecha);
+    if(fs&&fiso<fs) return false;
+    if(fe&&fiso>fe) return false;
+    if(fq&&!JSON.stringify(p).toLowerCase().includes(fq)) return false;
+    return true;
+  });
+  document.getElementById('cp').textContent=`Mostrando ${list.length} de ${PEDIDOS.length} pedidos`;
+  if(!list.length){document.getElementById('tbody').innerHTML='<tr><td colspan="13" style="padding:30px;text-align:center;color:var(--mute)">Sin resultados</td></tr>';return;}
+  document.getElementById('tbody').innerHTML=list.map(p=>{
+    var saldo=(p.total||0)-(p.anticipo||0);
+    var badgeCls=p.estado==='Entregado'?'badge-ent':p.estado==='Listo'?'badge-listo':'badge-pend';
+    var sobrInfo='—';
+    if(p.sobrante&&p.sobranteNota) sobrInfo=`<span style="background:#FFF3E0;color:#E05A00;padding:2px 7px;border-radius:10px;font-size:10px;font-weight:700">♻️ de #${p.sobranteNota}</span>`;
+    else if(p.sobranteUsadoPor&&p.sobranteUsadoPor.length) sobrInfo=`<span style="background:#F0FFF4;color:var(--green);padding:2px 7px;border-radius:10px;font-size:10px;font-weight:700">En #${p.sobranteUsadoPor.join(', #')}</span>`;
+    return `<tr>
+      <td><strong>#${p.nota}</strong></td>
+      <td>${p.fecha||''}</td>
+      <td>${p.cliente||''}</td>
+      <td>${p.servicio||''}</td>
+      <td>${p.moldura||'—'}</td>
+      <td>${p.color||'—'}</td>
+      <td>${p.ml?'✅':'—'}</td>
+      <td>${sobrInfo}</td>
+      <td class="mo">${mx(p.total||0)}</td>
+      <td class="mo">${mx(p.anticipo||0)}</td>
+      <td class="mo" style="color:${saldo>0?'#E05A00':'var(--green)'}">${mx(saldo)}</td>
+      <td><span class="badge ${badgeCls}">${p.estado||'Pendiente'}</span></td>
+      <td style="display:flex;gap:4px">
+        <button class="bd" title="Editar" onclick="abrirEditar('${p.nota}')" style="color:#1565C0">✏️</button>
+        <button class="bd" onclick="eliminar('${p.nota}')">🗑</button>
+      </td>
+    </tr>`;
+  }).join('');
+}
+function filtrarHoy(){
+  var hoy=new Date().toLocaleDateString('es-MX');
+  var entregas=PEDIDOS.filter(p=>p.fechaEntrega===hoy||p.fecha===hoy);
+  document.getElementById('tbody').innerHTML=entregas.length?
+    entregas.map(p=>{
+      var saldo=(p.total||0)-(p.anticipo||0);
+      var badgeCls=p.estado==='Entregado'?'badge-ent':p.estado==='Listo'?'badge-listo':'badge-pend';
+      return `<tr><td><strong>#${p.nota}</strong></td><td>${p.fecha||''}</td><td>${p.cliente||''}</td><td>${p.servicio||''}</td><td>${p.moldura||'—'}</td><td>${p.color||'—'}</td><td>${p.ml?'✅':'—'}</td><td>—</td><td class="mo">${mx(p.total||0)}</td><td class="mo">${mx(p.anticipo||0)}</td><td class="mo" style="color:${saldo>0?'#E05A00':'var(--green)'}">${mx(saldo)}</td><td><span class="badge ${badgeCls}">${p.estado||'Pendiente'}</span></td><td></td></tr>`;
+    }).join(''):
+    '<tr><td colspan="13" style="padding:20px;text-align:center;color:var(--mute)">Sin entregas programadas para hoy</td></tr>';
+  document.getElementById('cp').textContent='📦 Entregas de hoy: '+entregas.length;
+}
+function eliminar(nota){
+  if(!confirm('¿Eliminar pedido #'+nota+'?')) return;
+  fetch(BASE+'/eliminar',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({nota})})
+    .then(()=>cargar()).catch(e=>alert('Error: '+e.message));
+}
+function exportarCSV(){
+  var rows=[['Nota','Fecha','Cliente','Telefono','Servicio','Moldura','Color','ML','Total','Anticipo','Saldo','Estado']];
+  PEDIDOS.forEach(p=>{
+    var s=(p.total||0)-(p.anticipo||0);
+    rows.push([p.nota,p.fecha,p.cliente,p.telefono||'',p.servicio||'',p.moldura||'',p.color||'',p.ml?'Sí':'No',p.total||0,p.anticipo||0,s,p.estado||'']);
+  });
+  var csv=rows.map(r=>r.map(c=>'"'+String(c).replace(/"/g,'""')+'"').join(',')).join('\n');
+  var a=document.createElement('a');
+  a.href='data:text/csv;charset=utf-8,\uFEFF'+encodeURIComponent(csv);
+  a.download='ventas_'+new Date().toLocaleDateString('es-MX').replace(/\//g,'-')+'.csv';
+  a.click();
+}
+
+// ── EDITAR PEDIDO ──────────────────────────────────────────────────────────────
+function abrirEditar(nota){
+  var p=PEDIDOS.find(x=>String(x.nota)===String(nota));
+  if(!p) return;
+  EDIT_NOTA=nota;
+  document.getElementById('editNota').textContent='#'+nota;
+  document.getElementById('editCliente').value=p.cliente||'';
+  document.getElementById('editTel').value=p.telefono||'';
+  document.getElementById('editAnticipo').value=p.anticipo||0;
+  // Convert display date (dd/mm/yyyy) to input format (yyyy-mm-dd)
+  function toInputDate(str){
+    if(!str) return '';
+    var parts=str.split('/');
+    if(parts.length===3) return parts[2]+'-'+parts[1].padStart(2,'0')+'-'+parts[0].padStart(2,'0');
+    return str;
+  }
+  document.getElementById('editFechaPedido').value=toInputDate(p.fecha);
+  document.getElementById('editFecha').value=p.fechaEntrega||'';
+  document.getElementById('editObs').value=p.observaciones||'';
+  document.getElementById('editModal').classList.add('open');
+}
+function cerrarEditar(){document.getElementById('editModal').classList.remove('open');}
+function guardarEdicion(){
+  if(!EDIT_NOTA) return;
+  // Convert yyyy-mm-dd back to display format dd/mm/yyyy
+  function toDisplayDate(str){
+    if(!str) return '';
+    var parts=str.split('-');
+    if(parts.length===3) return parts[2]+'/'+parts[1]+'/'+parts[0];
+    return str;
+  }
+  var fechaPedidoRaw=document.getElementById('editFechaPedido').value;
+  var campos={
+    cliente:    document.getElementById('editCliente').value.trim(),
+    telefono:   document.getElementById('editTel').value.trim(),
+    anticipo:   parseFloat(document.getElementById('editAnticipo').value)||0,
+    fecha:      toDisplayDate(fechaPedidoRaw),
+    fechaEntrega: document.getElementById('editFecha').value,
+    observaciones: document.getElementById('editObs').value.trim()
+  };
+  if(!fechaPedidoRaw) delete campos.fecha; // don't overwrite if blank
+  fetch(BASE+'/editarPedido',{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({nota:EDIT_NOTA,campos})
+  }).then(()=>{cerrarEditar();cargar();}).catch(e=>alert('Error: '+e.message));
+}
+document.getElementById('editModal').addEventListener('click',function(e){if(e.target===this)cerrarEditar();});
+
+// ── INVENTARIO ────────────────────────────────────────────────────────────────
+function cargarInventario(){
+  Promise.all([
+    fetch(BASE+'/inventario').then(r=>r.json()),
+    fetch(BASE+'/ventas').then(r=>r.json())
+  ]).then(([inv,vd])=>{
+    INV_DATA=inv;
+    VENTAS_DATA=vd.pedidos||[];
+    // Banner
+    var totalPulg=0,totalAhorradas=0;
+    VENTAS_DATA.forEach(p=>{
+      if(p.papelUsado&&p.hojasUsadas>0){var d=DIMS[p.papelUsado];if(d)totalPulg+=d.w*d.h*p.hojasUsadas;}
+      if(p.sobrante) totalAhorradas++;
+    });
+    document.getElementById('efTotal').textContent=Math.round(totalPulg).toLocaleString('es-MX')+' pulg²';
+    document.getElementById('efAhorradas').textContent=totalAhorradas+' hojas';
+    renderInvCat();
+  }).catch(e=>console.warn('Inv error:',e.message));
+}
+
+function selInvCat(cat,btn){
+  INV_CAT=cat;
+  document.querySelectorAll('.cat-inv-btn').forEach(b=>b.classList.remove('active'));
+  if(btn) btn.classList.add('active');
+  if(INV_DATA) renderInvCat();
+}
+
+function renderInvCat(){
+  var inv=INV_DATA, ventas=VENTAS_DATA;
+  var el=document.getElementById('invCatContent'); if(!el) return;
+  var html='';
+
+  function bdg(est){
+    return est==='ok'?'<span class="alerta-badge alerta-ok">✅ OK</span>':
+           est==='low'?'<span class="alerta-badge alerta-low">⚠️ Bajo</span>':
+           '<span class="alerta-badge alerta-out">🚨 Agotado</span>';
+  }
+  function est(cant,min){return cant<=0?'out':cant<=min?'low':'ok';}
+  function minIn(tipo,id,val){return `mín: <input class="min-input-dash" type="number" value="${val}" onblur="actualizarMin('${tipo}','${id}',this.value)" min="0"/>`;}
+
+  if(INV_CAT==='papel'){
+    var consumo={};
+    (inv.papel||[]).forEach(p=>{consumo[p.id]={nombre:p.nombre,hojas:0,pulgadas2:0,ahorradas:0};});
+    ventas.forEach(p=>{
+      if(p.papelUsado&&p.hojasUsadas>0){
+        var k=p.papelUsado; if(!consumo[k])consumo[k]={nombre:k,hojas:0,pulgadas2:0,ahorradas:0};
+        consumo[k].hojas+=p.hojasUsadas; var d=DIMS[k]; if(d)consumo[k].pulgadas2+=d.w*d.h*p.hojasUsadas;
+      }
+      if(p.sobrante&&p.papelUsado&&consumo[p.papelUsado])consumo[p.papelUsado].ahorradas++;
+    });
+    var alertas=0;
+    html='<div class="inv-card-full"><div class="inv-ch"><span class="inv-ct">📄 Papel Fotográfico</span><span class="inv-cc" id="papelAlertaCount">—</span></div>';
+    (inv.papel||[]).forEach(p=>{
+      var c=consumo[p.id]||{hojas:0,pulgadas2:0,ahorradas:0};
+      var disp=Math.max(0,(p.hojas||0)-c.hojas);
+      var pct=p.hojas>0?Math.round(disp/p.hojas*100):0;
+      var e=est(disp,p.minimo||0); if(e!=='ok')alertas++;
+      var barCls=e==='ok'?'pb-ok':e==='low'?'pb-low':'pb-out';
+      var sq=Math.round(c.pulgadas2).toLocaleString('es-MX');
+      html+=`<div class="stock-row"><div><div class="stock-name">${p.nombre}</div>
+        <div class="stock-detail">${c.hojas} hojas usadas · ${sq} pulg²${c.ahorradas>0?' · ♻️ '+c.ahorradas+' ahorradas':''}</div></div>
+        <div style="display:flex;align-items:center;gap:14px">
+          <div style="text-align:right"><div class="stock-qty ${e}">${disp}</div><div style="font-size:10px;color:var(--mute)">disponibles</div></div>
+          ${bdg(e)}<div style="font-size:10px;color:var(--mute)">${minIn('papel',p.id,p.minimo||0)}</div>
+        </div></div>
+        <div class="progress-bar-wrap"><div class="progress-bar-label"><span>${p.nombre}</span><span>${pct}% (${disp} de ${p.hojas||0})</span></div>
+        <div class="progress-bar-track"><div class="progress-bar-fill ${barCls}" style="width:${Math.min(100,pct)}%"></div></div></div>`;
+    });
+    html+='</div>';
+    el.innerHTML=html;
+    var ac=document.getElementById('papelAlertaCount'); if(ac)ac.textContent=alertas>0?alertas+' ⚠️ alertas':'✅ Todo en orden';
+
+  } else if(INV_CAT==='portarretratos'){
+    var list=inv.portarretratos||[];
+    html='<div class="inv-card-full"><div class="inv-ch"><span class="inv-ct">🖼️ Portarretratos</span><span class="inv-cc">'+list.length+' modelos</span></div>';
+    if(!list.length)html+='<div style="padding:30px;text-align:center;color:var(--mute)">Sin portarretratos registrados</div>';
+    list.forEach(p=>{
+      var e=est(p.cantidad||0,p.minimo||0);
+      html+=`<div class="stock-row"><div><div class="stock-name">${p.tamano}</div><div class="stock-detail">$${p.precio||0}</div></div>
+        <div style="display:flex;align-items:center;gap:14px">
+          <div style="text-align:right"><div class="stock-qty ${e}">${p.cantidad||0}</div><div style="font-size:10px;color:var(--mute)">piezas</div></div>
+          ${bdg(e)}<div style="font-size:10px;color:var(--mute)">${minIn('portarretrato',p.id,p.minimo||0)}</div>
+        </div></div>`;
+    });
+    html+='</div>'; el.innerHTML=html;
+
+  } else if(INV_CAT==='marcosStock'){
+    var list=inv.marcosStock||[];
+    var total=list.reduce((s,m)=>s+(m.cantidad||0),0);
+    html=`<div class="inv-card-full"><div class="inv-ch"><span class="inv-ct">🛒 Marcos Stock</span><span class="inv-cc">${list.length} modelos · ${total} piezas</span></div>
+      <div style="overflow-x:auto"><table>
+        <thead><tr style="background:var(--K)">
+          <th style="color:var(--Y)">Tamaño</th><th style="color:var(--Y)">Modelo</th><th style="color:var(--Y)">Color</th>
+          <th style="color:var(--Y);text-align:right">Precio</th><th style="color:var(--Y);text-align:center">Cant.</th><th style="color:var(--Y);text-align:center">Estado</th>
+        </tr></thead><tbody>`;
+    if(!list.length)html+='<tr><td colspan="6" style="padding:30px;text-align:center;color:var(--mute)">Sin marcos en stock</td></tr>';
+    list.forEach(m=>{
+      var e=est(m.cantidad||0,m.minimo||0);
+      var precioTxt=m.precio>0?'$'+m.precio:'<span style="color:#E05A00">Sin precio</span>';
+      html+=`<tr style="border-bottom:1px solid var(--brd)">
+        <td style="font-weight:600">${m.tamano}</td><td>${m.modelo}</td><td style="color:var(--mute)">${m.color}</td>
+        <td style="text-align:right;font-weight:700">${precioTxt}</td>
+        <td style="text-align:center;font-family:'Playfair Display',serif;font-size:18px;font-weight:700">${m.cantidad||0}</td>
+        <td style="text-align:center">${bdg(e)}</td></tr>`;
+    });
+    html+='</tbody></table></div></div>'; el.innerHTML=html;
+
+  } else if(INV_CAT==='cristales'){
+    var list=inv.cristales||[];
+    var total=list.reduce((s,c)=>s+(c.cantidad||0),0);
+    html='<div class="inv-card-full"><div class="inv-ch"><span class="inv-ct">🔲 Cristales</span><span class="inv-cc">'+list.length+' tipos · '+total+' piezas</span></div>';
+    if(!list.length)html+='<div style="padding:30px;text-align:center;color:var(--mute)">Sin cristales registrados</div>';
+    list.forEach(c=>{
+      var e=est(c.cantidad||0,c.minimo||0);
+      html+=`<div class="stock-row"><div><div class="stock-name">${c.tamano}</div><div class="stock-detail">${c.tipo}</div></div>
+        <div style="display:flex;align-items:center;gap:14px">
+          <div style="text-align:right"><div class="stock-qty ${e}">${c.cantidad||0}</div><div style="font-size:10px;color:var(--mute)">piezas</div></div>
+          ${bdg(e)}<div style="font-size:10px;color:var(--mute)">${minIn('cristal',c.id,c.minimo||0)}</div>
+        </div></div>`;
+    });
+    html+='</div>'; el.innerHTML=html;
+
+  } else if(INV_CAT==='mdf'){
+    var list=inv.mdf||[];
+    var total=list.reduce((s,m)=>s+(m.cantidad||0),0);
+    html='<div class="inv-card-full"><div class="inv-ch"><span class="inv-ct">🪵 MDF</span><span class="inv-cc">'+list.length+' tamaños · '+total+' piezas</span></div>';
+    if(!list.length)html+='<div style="padding:30px;text-align:center;color:var(--mute)">Sin MDF registrado</div>';
+    list.forEach(m=>{
+      var e=est(m.cantidad||0,m.minimo||0);
+      html+=`<div class="stock-row"><div><div class="stock-name">MDF ${m.tamano}</div></div>
+        <div style="display:flex;align-items:center;gap:14px">
+          <div style="text-align:right"><div class="stock-qty ${e}">${m.cantidad||0}</div><div style="font-size:10px;color:var(--mute)">piezas</div></div>
+          ${bdg(e)}<div style="font-size:10px;color:var(--mute)">${minIn('mdf',m.id,m.minimo||0)}</div>
+        </div></div>`;
+    });
+    html+='</div>'; el.innerHTML=html;
+
+  } else if(INV_CAT==='insumos'){
+    var ct=inv.carton||{}, cr=inv.craft||{}, aa=inv.autoadherible||{};
+    html='<div class="inv-card-full"><div class="inv-ch"><span class="inv-ct">📦 Insumos</span><span class="inv-cc">Cartón · Craft · Autoadherible</span></div>';
+    // Cartón
+    var ctE=est(ct.hojas||0,ct.minimo||0);
+    html+=`<div class="stock-row"><div><div class="stock-name">📦 Cartón</div><div class="stock-detail">Hojas 87×100cm · ${Math.round(ct.cm2||0).toLocaleString('es-MX')} cm² disponibles</div></div>
+      <div style="display:flex;align-items:center;gap:14px"><div style="text-align:right"><div class="stock-qty ${ctE}">${ct.hojas||0}</div><div style="font-size:10px;color:var(--mute)">hojas</div></div>${bdg(ctE)}</div></div>`;
+    // Craft
+    var crE=est(cr.rollos||0,cr.minimo||0);
+    html+=`<div class="stock-row"><div><div class="stock-name">🟫 Papel Craft</div><div class="stock-detail">Rollos 90cm × 240m · ${Math.round(cr.cm2||0).toLocaleString('es-MX')} cm² disponibles</div></div>
+      <div style="display:flex;align-items:center;gap:14px"><div style="text-align:right"><div class="stock-qty ${crE}">${cr.rollos||0}</div><div style="font-size:10px;color:var(--mute)">rollos</div></div>${bdg(crE)}</div></div>`;
+    // Autoadherible
+    var aaE=est(aa.piezas||0,aa.minimo||0);
+    html+=`<div class="stock-row"><div><div class="stock-name">🏷️ Papel Autoadherible</div><div class="stock-detail">~${Math.floor((aa.piezas||0)/16)} pliegos (${aa.piezas||0} piezas)</div></div>
+      <div style="display:flex;align-items:center;gap:14px"><div style="text-align:right"><div class="stock-qty ${aaE}">${aa.piezas||0}</div><div style="font-size:10px;color:var(--mute)">piezas</div></div>${bdg(aaE)}</div></div>`;
+    html+='</div>'; el.innerHTML=html;
+
+  } else if(INV_CAT==='consumo'){
+    var consumo={};
+    (inv.papel||[]).forEach(p=>consumo[p.id]={nombre:p.nombre,hojas:0,pulgadas2:0,ahorradas:0});
+    var totalPulg=0;
+    ventas.forEach(p=>{
+      if(p.papelUsado&&p.hojasUsadas>0){
+        var k=p.papelUsado; if(!consumo[k])consumo[k]={nombre:k,hojas:0,pulgadas2:0,ahorradas:0};
+        consumo[k].hojas+=p.hojasUsadas; var d=DIMS[k]; if(d){var sq=d.w*d.h*p.hojasUsadas;consumo[k].pulgadas2+=sq;totalPulg+=sq;}
+      }
+      if(p.sobrante&&p.papelUsado&&consumo[p.papelUsado])consumo[p.papelUsado].ahorradas++;
+    });
+    var hay=Object.values(consumo).some(c=>c.hojas>0);
+    html='<div class="inv-card-full"><div class="inv-ch"><span class="inv-ct">📊 Consumo de Papel</span><span class="inv-cc">'+Math.round(totalPulg).toLocaleString('es-MX')+' pulg² totales</span></div>';
+    if(!hay)html+='<div style="padding:40px;text-align:center;color:var(--mute)">Sin datos de consumo aún</div>';
+    else{
+      html+='<div class="consumo-grid">';
+      Object.keys(consumo).forEach(id=>{
+        var c=consumo[id]; var d=DIMS[id];
+        var sq=d?Math.round(d.w*d.h*c.hojas).toLocaleString('es-MX'):0;
+        html+=`<div class="consumo-card"><div class="consumo-label">${c.nombre}</div>
+          <div class="consumo-val">${c.hojas}</div><div class="consumo-sub">hojas consumidas</div>
+          <div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--brd)">
+            <div style="font-size:18px;font-weight:700;font-family:'Playfair Display',serif">${sq} <span style="font-size:12px;font-weight:400;color:var(--mute)">pulg²</span></div>
+            <div style="font-size:11px;color:var(--mute);margin-top:2px">área impresa</div>
+            ${c.ahorradas>0?`<div style="margin-top:6px;font-size:11px;color:var(--green);font-weight:600">♻️ ${c.ahorradas} hojas ahorradas</div>`:''}
+          </div></div>`;
+      });
+      html+='</div>';
+    }
+    html+='</div>'; el.innerHTML=html;
+  }
+}
+
+function actualizarMin(tipo,id,valor){
+  fetch(BASE+'/inventario/minimo',{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({tipo,id,minimo:parseInt(valor)||0})
+  }).catch(e=>console.warn('Min error:',e.message));
+}
+
+// ── HISTORIAL ─────────────────────────────────────────────────────────────────
+function cargarHistorial(){
+  fetch(BASE+'/historialIngresos').then(r=>r.json()).then(d=>{
+    var hist=d.historial||[];
+    document.getElementById('histTotal').textContent=hist.length+' movimientos';
+    var TIPO_LABEL={papel:'📄 Papel',portarretrato:'🖼️ Portarretrato',cristal:'🔲 Cristal',
+      marcoStock:'🛒 Marco Stock',mdf:'🪵 MDF',carton:'📦 Cartón',craft:'🟫 Craft',autoadherible:'🏷️ Autoadherible'};
+    var h=hist.map(e=>{
+      var label=TIPO_LABEL[e.tipo]||e.tipo;
+      var prod='';
+      if(e.tipo==='papel') prod=e.papelId;
+      else if(e.tipo==='portarretrato') prod=e.tamano;
+      else if(e.tipo==='cristal') prod=(e.tamano||'')+' '+e.tipoCristal;
+      else if(e.tipo==='marcoStock') prod=`${e.tamano||''} · ${e.modelo||''} · ${e.color||''}`;
+      else if(e.tipo==='mdf') prod=e.tamano;
+      else if(e.tipo==='carton') prod=(e.hojas||0)+' hojas';
+      else if(e.tipo==='craft') prod=(e.rollos||0)+' rollo(s)';
+      else if(e.tipo==='autoadherible') prod=(e.pliegos||0)+' pliegos → '+(e.piezas||0)+' piezas';
+      var cant=e.cantidad||e.hojas||e.rollos||e.pliegos||'—';
+      return `<tr><td>${e.fecha||'—'}</td><td><strong>${label}</strong></td><td>${prod}</td>
+        <td><span style="background:var(--off);border:1px solid var(--brd);padding:2px 9px;border-radius:10px;font-size:11px;font-weight:700">+${cant}</span></td></tr>`;
+    }).join('');
+    document.getElementById('histTbody').innerHTML=h||'<tr><td colspan="4" style="padding:30px;text-align:center;color:var(--mute)">Sin ingresos registrados</td></tr>';
+  }).catch(e=>{document.getElementById('histTbody').innerHTML='<tr><td colspan="4" style="padding:20px;text-align:center;color:#E05A00">Error: '+e.message+'</td></tr>';});
+}
+
+// ── INIT ──────────────────────────────────────────────────────────────────────
+cargar();
+</script>
+</body>
+</html>

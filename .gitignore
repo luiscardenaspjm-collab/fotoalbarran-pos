@@ -1,0 +1,13 @@
+node_modules/
+.env
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+
+# Datos viejos basados en archivo (ya migrados a Turso, no deben subirse a GitHub)
+ventas.json
+inventario.json
+flujo.json
+backups/
+files.zip
