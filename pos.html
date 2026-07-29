@@ -2372,14 +2372,26 @@ function onMLMargenChange(){
 // ─── STEP 5 ──────────────────────────────────────────────────────────────────
 function renderResult(){
   const {marco,glass,mlc,print,total}=calcTotal();
-  document.getElementById('resPrice').textContent=mx(total);
+
+  const cartItems = ST.items||[];
+  const cartSum = cartItems.reduce(function(s,i){return s+i.precio;},0);
+  const granTotal = total + cartSum;
 
   let bd=`<div class="bd-row"><span>Marco · ${ST.moldura.m}</span><span>${mx(marco)}</span></div>`;
   if(glass>0) bd+=`<div class="bd-row"><span>${ST.glass.name}</span><span>${mx(glass)}</span></div>`;
   if(mlc>0)   bd+=`<div class="bd-row"><span>María Luisa</span><span>${mx(mlc)}</span></div>`;
   if(print>0) bd+=`<div class="bd-row"><span>Impresión</span><span>${mx(print)}</span></div>`;
-  bd+=`<div class="bd-row"><span>Total</span><span>${mx(total)}</span></div>`;
+  bd+=`<div class="bd-row"><span>Este marco</span><span>${mx(total)}</span></div>`;
+  if(cartItems.length){
+    bd+=`<div class="bd-row"><span>Ya en el pedido (${cartItems.length} marco${cartItems.length>1?'s':''})</span><span>${mx(cartSum)}</span></div>`;
+    bd+=`<div class="bd-row" style="font-weight:800;border-top:2px solid #000;padding-top:8px;margin-top:4px"><span>Total del pedido</span><span>${mx(granTotal)}</span></div>`;
+  } else {
+    bd+=`<div class="bd-row"><span>Total</span><span>${mx(total)}</span></div>`;
+  }
   document.getElementById('breakdown').innerHTML=bd;
+
+  // #resPrice muestra el total combinado (con descuento aplicado si hay uno activo)
+  actualizarPrecioConDesc('m');
 
   var objDim=ST.alto+'×'+ST.ancho+' cm';
   var frmDim=ST.frameAlto+'×'+ST.frameAncho+' cm';
@@ -2448,22 +2460,52 @@ async function guardarPedido(){
 
   const {marco,glass:gc,mlc,print,total} = calcTotal();
 
-  const payload = {
-    nota, cliente, telefono: tel,
-    servicio: 'Marcos',
-    alto: ST.frameAlto||ST.alto, ancho: ST.frameAncho||ST.ancho,
-    objAlto: ST.alto, objAncho: ST.ancho, mlMargen: ST.mlMargen,
-    moldura: ST.moldura.m,
-    color: ST.color || '—',
-    cristal: ST.glass.name,
-    ml: ST.ml,
-    impresion: ST.impresion,
-    respaldo: ST.respaldo||'Cartón', respaldoId: ST.respaldoId,
+  // El marco que se está terminando de configurar ahora mismo
+  const currentItem = {
+    desc:     ST.moldura.m+(ST.color?' '+ST.color:'')+' · '+(ST.frameAlto||ST.alto)+'×'+(ST.frameAncho||ST.ancho)+' cm',
+    moldura:  ST.moldura.m,
+    color:    ST.color || '—',
+    alto:     ST.frameAlto||ST.alto,
+    ancho:    ST.frameAncho||ST.ancho,
+    objAlto:  ST.alto,
+    objAncho: ST.ancho,
+    mlMargen: ST.mlMargen||0,
+    ml:       ST.ml,
+    glass:    ST.glass.name,
+    glassId:  ST.glass.id,
+    respaldo: ST.respaldo||'Cartón',
+    respaldoId: ST.respaldoId||'',
+    impresion: !!ST.impresion,
     costoMarco:     Math.ceil(marco),
     costoCristal:   Math.ceil(gc),
     costoML:        Math.ceil(mlc),
     costoImpresion: Math.ceil(print),
-    total:          Math.ceil(total),
+    precio:   Math.ceil(total)
+  };
+
+  // Combina los marcos ya agregados al carrito + el que se acaba de terminar
+  const allItems   = (ST.items||[]).concat([currentItem]);
+  const baseTotal  = allItems.reduce(function(s,i){return s+i.precio;},0);
+  const grandTotal = Math.ceil(baseTotal * descFactor('m'));
+  const first      = allItems[0];
+
+  const payload = {
+    nota, cliente, telefono: tel,
+    servicio: 'Marcos',
+    alto: first.alto, ancho: first.ancho,
+    objAlto: first.objAlto, objAncho: first.objAncho, mlMargen: first.mlMargen,
+    moldura: first.moldura,
+    color: first.color || '—',
+    cristal: first.glass,
+    ml: first.ml,
+    impresion: first.impresion,
+    respaldo: first.respaldo, respaldoId: first.respaldoId,
+    costoMarco:     first.costoMarco,
+    costoCristal:   first.costoCristal,
+    costoML:        first.costoML,
+    costoImpresion: first.costoImpresion,
+    items:          allItems,
+    total:          grandTotal,
     anticipo,
     fechaEntrega: fecha,
     observaciones: obs
@@ -2477,6 +2519,7 @@ async function guardarPedido(){
     });
     const data = await res.json();
     if(data.success){
+      ST.items = []; // ya se guardaron todos, limpiar el carrito
       showSuccess(payload);
     } else {
       throw new Error(data.error || 'Error desconocido');
@@ -2491,14 +2534,15 @@ async function guardarPedido(){
 
 function showSuccess(d){
   const saldo = d.total - d.anticipo;
+  const nMarcos = (d.items||[]).length;
 
   document.getElementById('successNota').textContent = '#' + d.nota;
 
   document.getElementById('successDetails').innerHTML = `
     <div class="sd-row"><span>Cliente</span><span>${d.cliente}</span></div>
     <div class="sd-row"><span>Teléfono</span><span>${d.telefono||'—'}</span></div>
-    <div class="sd-row"><span>Medidas</span><span>${d.alto} × ${d.ancho} cm</span></div>
-    <div class="sd-row"><span>Moldura</span><span>${d.moldura}</span></div>
+    <div class="sd-row"><span>Medidas</span><span>${d.alto} × ${d.ancho} cm${nMarcos>1?' (+'+(nMarcos-1)+' marco'+(nMarcos>2?'s':'')+' más)':''}</span></div>
+    <div class="sd-row"><span>Moldura</span><span>${d.moldura}${nMarcos>1?' y otras':''}</span></div>
     <div class="sd-row"><span>Entrega</span><span>${d.fechaEntrega||'—'}</span></div>
     <div class="sd-row"><span>Anticipo</span><span>${mx(d.anticipo)}</span></div>
     <div class="sd-row"><span>Saldo</span><span>${mx(saldo)}</span></div>
@@ -4353,6 +4397,10 @@ function agregarMarcoAlCarrito(){
       respaldo: ST.respaldo||'Cartón',
       respaldoId: ST.respaldoId||'',
       impresion: !!ST.impresion,
+      costoMarco:     Math.ceil(t.marco),
+      costoCristal:   Math.ceil(t.glass),
+      costoML:        Math.ceil(t.mlc),
+      costoImpresion: Math.ceil(t.print),
       precio:   t.total
     });
     var savedItems = ST.items.slice();

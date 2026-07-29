@@ -284,41 +284,57 @@ const server = http.createServer(async (req, res) => {
         console.log(`🖼  Marco Stock #${pedido.msId}: -1`);
       }
 
-      // Descontar MDF o Cartón (+ craft) del inventario
-      if (pedido.respaldo && pedido.alto && pedido.ancho) {
-        const area = parseFloat(pedido.alto) * parseFloat(pedido.ancho);
-        if (pedido.respaldo === 'MDF') {
-          await db.execute({ sql: 'UPDATE inventario_mdf SET cantidad = MAX(0, cantidad - 1) WHERE tamano = ?', args: [pedido.respaldoId] });
-        } else if (pedido.respaldo === 'Cartón') {
-          const areaConMerma = area * 1.15;
-          const r = await db.execute("SELECT data FROM inventario_singleton WHERE categoria='carton'");
-          const d = JSON.parse(r.rows[0].data);
-          d.cm2    = Math.max(0, (d.cm2||0) - areaConMerma);
-          d.hojas  = Math.max(0, (d.hojas||0) - (areaConMerma/8700));
-          await db.execute({ sql: "UPDATE inventario_singleton SET data=? WHERE categoria='carton'", args: [JSON.stringify(d)] });
-          console.log(`📦 Cartón: -${Math.round(areaConMerma)} cm²`);
+      // Descontar MDF o Cartón (+ craft) del inventario — uno por cada marco del pedido
+      // (pedido.items trae todos los marcos si se usó "Agregar otro marco al mismo pedido";
+      //  si no viene, se usa el propio pedido como si fuera un solo marco — compatibilidad hacia atrás)
+      const itemsParaInventario = (pedido.items && pedido.items.length) ? pedido.items : [pedido];
+      for (const item of itemsParaInventario) {
+        if (item.respaldo && item.alto && item.ancho) {
+          const area = parseFloat(item.alto) * parseFloat(item.ancho);
+          if (item.respaldo === 'MDF') {
+            await db.execute({ sql: 'UPDATE inventario_mdf SET cantidad = MAX(0, cantidad - 1) WHERE tamano = ?', args: [item.respaldoId] });
+          } else if (item.respaldo === 'Cartón') {
+            const areaConMerma = area * 1.15;
+            const r = await db.execute("SELECT data FROM inventario_singleton WHERE categoria='carton'");
+            const d = JSON.parse(r.rows[0].data);
+            d.cm2    = Math.max(0, (d.cm2||0) - areaConMerma);
+            d.hojas  = Math.max(0, (d.hojas||0) - (areaConMerma/8700));
+            await db.execute({ sql: "UPDATE inventario_singleton SET data=? WHERE categoria='carton'", args: [JSON.stringify(d)] });
+            console.log(`📦 Cartón: -${Math.round(areaConMerma)} cm²`);
+          }
+          const craftArea = area * 1.15;
+          const r2 = await db.execute("SELECT data FROM inventario_singleton WHERE categoria='craft'");
+          const d2 = JSON.parse(r2.rows[0].data);
+          d2.cm2 = Math.max(0, (d2.cm2||0) - craftArea);
+          await db.execute({ sql: "UPDATE inventario_singleton SET data=? WHERE categoria='craft'", args: [JSON.stringify(d2)] });
+          console.log(`📦 Craft: -${Math.round(craftArea)} cm²`);
         }
-        const craftArea = area * 1.15;
-        const r2 = await db.execute("SELECT data FROM inventario_singleton WHERE categoria='craft'");
-        const d2 = JSON.parse(r2.rows[0].data);
-        d2.cm2 = Math.max(0, (d2.cm2||0) - craftArea);
-        await db.execute({ sql: "UPDATE inventario_singleton SET data=? WHERE categoria='craft'", args: [JSON.stringify(d2)] });
-        console.log(`📦 Craft: -${Math.round(craftArea)} cm²`);
       }
 
-      // Crear orden en flujo de trabajo para Marcos personalizados / Flotados
+      // Crear una orden de flujo de trabajo POR CADA MARCO del pedido (Marcos personalizados / Flotados).
+      // El primer marco usa la nota tal cual (#1042); los siguientes llevan sufijo (#1042-2, #1042-3…)
+      // para poder darle seguimiento independiente a cada uno (armado, listo, etc.)
       if ((pedido.servicio === 'Marcos' || pedido.servicio === 'Flotados') && !pedido.esStock) {
-        await db.execute({
-          sql: `INSERT INTO flujo_ordenes (nota, cliente, telefono, servicio, descripcion, cristal, ml, impresion, total, fecha_entrega, fecha_creacion, notas, estado)
-                VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)`,
-          args: [
-            String(pedido.nota), pedido.cliente, pedido.telefono || '', pedido.servicio,
-            `${pedido.alto}×${pedido.ancho} cm · ${pedido.moldura}`,
-            pedido.cristal || '—', pedido.ml ? 1 : 0, pedido.impresion ? 1 : 0,
-            pedido.total, pedido.fechaEntrega || '', pedido.fecha, '', 'En proceso',
-          ],
-        });
-        console.log(`🔧 Orden de flujo creada: #${pedido.nota}`);
+        const itemsParaFlujo = (pedido.items && pedido.items.length) ? pedido.items : [{
+          alto: pedido.alto, ancho: pedido.ancho, moldura: pedido.moldura,
+          glass: pedido.cristal, ml: pedido.ml, impresion: pedido.impresion, precio: pedido.total,
+        }];
+        for (let i = 0; i < itemsParaFlujo.length; i++) {
+          const item = itemsParaFlujo[i];
+          const notaFlujo = i === 0 ? String(pedido.nota) : `${pedido.nota}-${i + 1}`;
+          await db.execute({
+            sql: `INSERT INTO flujo_ordenes (nota, cliente, telefono, servicio, descripcion, cristal, ml, impresion, total, fecha_entrega, fecha_creacion, notas, estado)
+                  VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+            args: [
+              notaFlujo, pedido.cliente, pedido.telefono || '', pedido.servicio,
+              `${item.alto}×${item.ancho} cm · ${item.moldura || pedido.moldura}`,
+              item.glass || pedido.cristal || '—', item.ml ? 1 : 0, item.impresion ? 1 : 0,
+              item.precio != null ? item.precio : pedido.total,
+              pedido.fechaEntrega || '', pedido.fecha, '', 'En proceso',
+            ],
+          });
+          console.log(`🔧 Orden de flujo creada: #${notaFlujo}`);
+        }
       }
 
       // Si usa sobrante, vincular con pedido origen
@@ -408,13 +424,18 @@ const server = http.createServer(async (req, res) => {
     const moldCount = {}, colorCount = {}, servicios = {}, diasMap = {};
 
     pedidos.forEach(p => {
-      if (p.moldura && p.moldura !== '—') {
-        moldCount[p.moldura] = (moldCount[p.moldura] || 0) + 1;
-        if (p.color && p.color !== '—') {
-          const key = `${p.moldura} · ${p.color}`;
-          colorCount[key] = (colorCount[key] || 0) + 1;
+      // Si el pedido tiene varios marcos (items[]), cuenta la moldura/color de cada uno;
+      // si no, usa los campos del propio pedido (un solo marco).
+      const marcos = (p.items && p.items.length) ? p.items : [p];
+      marcos.forEach(m => {
+        if (m.moldura && m.moldura !== '—') {
+          moldCount[m.moldura] = (moldCount[m.moldura] || 0) + 1;
+          if (m.color && m.color !== '—') {
+            const key = `${m.moldura} · ${m.color}`;
+            colorCount[key] = (colorCount[key] || 0) + 1;
+          }
         }
-      }
+      });
       const svc = p.servicio || 'Marcos';
       servicios[svc] = (servicios[svc] || 0) + (p.total || 0);
       if (p.fecha) diasMap[p.fecha] = (diasMap[p.fecha] || 0) + (p.total || 0);
