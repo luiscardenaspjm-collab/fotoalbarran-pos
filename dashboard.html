@@ -273,6 +273,18 @@ tr:hover td{background:var(--off)}
   </div>
 </div>
 
+<div id="verModal" class="modal-overlay">
+  <div class="modal-box">
+    <div class="modal-title">Resumen del Pedido <span id="verNota" style="color:#B8860B"></span></div>
+    <div class="modal-sub">Detalle completo — solo lectura</div>
+    <div id="verContenido" style="margin-top:6px;max-height:60vh;overflow-y:auto"></div>
+    <div class="modal-btns">
+      <button class="btn-cancel" onclick="cerrarVer()">Cerrar</button>
+      <button class="btn-save" onclick="cerrarVer();abrirEditar(VER_NOTA)">✏️ Editar este pedido</button>
+    </div>
+  </div>
+</div>
+
 <script>
 const BASE=''; // mismo origen: funciona en local (node server.js) y en Railway
 const mx=n=>'$'+Math.round(n).toLocaleString('es-MX');
@@ -283,6 +295,7 @@ var INV_DATA=null;
 var VENTAS_DATA=[];
 var INV_CAT='papel';
 var EDIT_NOTA=null;
+var VER_NOTA=null;
 
 // ── TAB SWITCHING ─────────────────────────────────────────────────────────────
 function switchTab(tab,btn){
@@ -376,6 +389,7 @@ function renderT(){
       <td class="mo" style="color:${saldo>0?'#E05A00':'var(--green)'}">${mx(saldo)}</td>
       <td><span class="badge ${badgeCls}">${p.estado||'Pendiente'}</span></td>
       <td style="display:flex;gap:4px">
+        <button class="bd" title="Ver detalle" onclick="verDetalle('${p.nota}')" style="color:#555">👁️</button>
         <button class="bd" title="Editar" onclick="abrirEditar('${p.nota}')" style="color:#1565C0">✏️</button>
         <button class="bd" onclick="eliminar('${p.nota}')">🗑</button>
       </td>
@@ -411,6 +425,78 @@ function exportarCSV(){
   a.download='ventas_'+new Date().toLocaleDateString('es-MX').replace(/\//g,'-')+'.csv';
   a.click();
 }
+
+// ── VER DETALLE (resumen de solo lectura) ──────────────────────────────────────
+function verDetalle(nota){
+  var p=PEDIDOS.find(x=>String(x.nota)===String(nota));
+  if(!p) return;
+  VER_NOTA=nota;
+  document.getElementById('verNota').textContent='#'+nota;
+  var saldo=(p.total||0)-(p.anticipo||0);
+
+  var LABELS={
+    cliente:'Cliente', telefono:'Teléfono', servicio:'Servicio', fecha:'Fecha', hora:'Hora',
+    fechaEntrega:'Fecha de entrega', moldura:'Moldura', color:'Color', cristal:'Cristal',
+    ml:'María Luisa', mlMargen:'Margen ML (cm)', impresion:'Impresión', respaldo:'Respaldo',
+    respaldoId:'Respaldo (pieza)', alto:'Alto (cm)', ancho:'Ancho (cm)',
+    objAlto:'Alto objeto (cm)', objAncho:'Ancho objeto (cm)',
+    costoMarco:'Costo marco', costoCristal:'Costo cristal', costoML:'Costo ML', costoImpresion:'Costo impresión',
+    descripcion:'Descripción', especificaciones:'Especificaciones', autoadherible:'Autoadherible',
+    papelUsado:'Papel usado', hojasUsadas:'Hojas usadas', esStock:'De stock', stockTamano:'Tamaño (stock)',
+    stockModelo:'Modelo (stock)', esMarcoStock:'Marco de stock', msId:'ID marco stock', cristalId:'ID cristal',
+    sobrante:'Usa sobrante', sobranteNota:'Sobrante de #', sobranteUsadoPor:'Usado como sobrante en',
+    formaPago:'Forma de pago', descuento:'Descuento (%)', observaciones:'Observaciones',
+    docAlto:'Alto documento (cm)', docAncho:'Ancho documento (cm)', margen:'Margen (cm)',
+  };
+  var MONEY_KEYS=['costoMarco','costoCristal','costoML','costoImpresion'];
+  var HIDDEN=['nota','items','fidItems','total','anticipo','estado'];
+
+  function fmt(k,v){
+    if(v===null||v===undefined||v==='') return null;
+    if(typeof v==='boolean') return v?'Sí':'No';
+    if(MONEY_KEYS.indexOf(k)>-1) return mx(v);
+    if(Array.isArray(v)) return v.length?v.join(', '):null;
+    return String(v);
+  }
+
+  var rows='';
+  Object.keys(p).forEach(function(k){
+    if(HIDDEN.indexOf(k)>-1) return;
+    var val=fmt(k,p[k]);
+    if(val===null) return;
+    var label=LABELS[k]||k;
+    rows+='<div style="display:flex;justify-content:space-between;gap:12px;padding:7px 0;border-bottom:1px solid #eee;font-size:13px"><span style="color:#777">'+label+'</span><span style="font-weight:600;text-align:right;max-width:60%">'+val+'</span></div>';
+  });
+
+  var itemsHtml='';
+  if(p.items && p.items.length>1){
+    itemsHtml+='<div style="margin-top:10px;padding-top:10px;border-top:2px solid #000"><div style="font-weight:700;font-size:12px;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">🖼️ '+p.items.length+' marcos en este pedido</div>';
+    p.items.forEach(function(it){
+      itemsHtml+='<div style="background:#f7f7f7;border-radius:8px;padding:8px 10px;margin-bottom:6px;font-size:12px">'+
+        '<strong>'+(it.moldura||'—')+(it.color?' · '+it.color:'')+'</strong> — '+(it.alto||'?')+'×'+(it.ancho||'?')+' cm · '+(it.glass||it.cristal||'—')+
+        ' <span style="float:right;font-weight:700">'+mx(it.precio||0)+'</span></div>';
+    });
+    itemsHtml+='</div>';
+  }
+  if(p.fidItems && p.fidItems.length){
+    itemsHtml+='<div style="margin-top:10px;padding-top:10px;border-top:2px solid #000"><div style="font-weight:700;font-size:12px;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">🪪 '+p.fidItems.length+' ítem(s)</div>';
+    p.fidItems.forEach(function(it){
+      itemsHtml+='<div style="background:#f7f7f7;border-radius:8px;padding:8px 10px;margin-bottom:6px;font-size:12px">'+
+        '<strong>'+(it.nombre||it.tipo||'—')+'</strong> × '+(it.qty||1)+
+        ' <span style="float:right;font-weight:700">'+mx(it.precio||0)+'</span></div>';
+    });
+    itemsHtml+='</div>';
+  }
+
+  var totalsHtml='<div style="display:flex;justify-content:space-between;padding:9px 0;margin-top:6px;border-top:2px solid #000;font-weight:700"><span>Total</span><span>'+mx(p.total||0)+'</span></div>'+
+    '<div style="display:flex;justify-content:space-between;padding:5px 0;font-size:13px"><span>Anticipo</span><span>'+mx(p.anticipo||0)+'</span></div>'+
+    '<div style="display:flex;justify-content:space-between;padding:5px 0;font-size:13px;font-weight:700;color:'+(saldo>0?'#E05A00':'var(--green)')+'"><span>Saldo</span><span>'+mx(saldo)+'</span></div>'+
+    '<div style="display:flex;justify-content:space-between;padding:5px 0 2px;font-size:13px"><span>Estado</span><span>'+(p.estado||'Pendiente')+'</span></div>';
+
+  document.getElementById('verContenido').innerHTML = rows + itemsHtml + totalsHtml;
+  document.getElementById('verModal').classList.add('open');
+}
+function cerrarVer(){ document.getElementById('verModal').classList.remove('open'); }
 
 // ── EDITAR PEDIDO ──────────────────────────────────────────────────────────────
 function abrirEditar(nota){
