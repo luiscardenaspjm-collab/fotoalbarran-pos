@@ -4701,7 +4701,7 @@ function cargarFlujo(){
     var tbody = document.getElementById('flujoTbody');
     if(!tbody) return;
     if(ordenes.length===0){
-      tbody.innerHTML='<tr><td colspan="14" style="text-align:center;padding:40px;color:var(--mute)">Sin órdenes activas — los marcos personalizados aparecen aquí al guardarse</td></tr>';
+      tbody.innerHTML='<tr><td colspan="15" style="text-align:center;padding:40px;color:var(--mute)">Sin órdenes activas — los marcos personalizados aparecen aquí al guardarse</td></tr>';
       return;
     }
     var html='';
@@ -4733,12 +4733,21 @@ function cargarFlujo(){
       html+='</div></td>';
       html+='<td><span class="estado-badge '+badgeCls+'">'+o.estado+'</span></td>';
       html+='<td><input class="flujo-nota-field" value="'+(o.notas||'')+'" placeholder="Notas..." onblur="guardarNotaFlujo(\''+o.nota+'\',this.value)"/></td>';
+      html+='<td><button onclick="eliminarFlujo(\''+o.nota+'\')" title="Eliminar orden de flujo" style="background:rgba(163,45,45,.1);border:none;color:#A32D2D;border-radius:6px;padding:6px 9px;cursor:pointer;font-size:13px">🗑</button></td>';
       html+='</tr>';
     });
     tbody.innerHTML=html;
   }).catch(function(e){
-    document.getElementById('flujoTbody').innerHTML='<tr><td colspan="12" style="text-align:center;padding:20px;color:#E05A00">Error al cargar: '+e.message+'</td></tr>';
+    document.getElementById('flujoTbody').innerHTML='<tr><td colspan="15" style="text-align:center;padding:20px;color:#E05A00">Error al cargar: '+e.message+'</td></tr>';
   });
+}
+
+function eliminarFlujo(nota){
+  if(!confirm('¿Eliminar la orden de flujo #'+nota+'?\n\n(Esto NO borra la venta/pedido, solo su seguimiento en Flujo de Trabajo. Para borrar el pedido completo, hazlo desde el Dashboard.)')) return;
+  fetch(SERVER+'/flujo/eliminar',{
+    method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({nota:nota})
+  }).then(function(){ cargarFlujo(); }).catch(function(e){alert('Error: '+e.message);});
 }
 
 function actualizarEtapa(nota, etapa, valor){
@@ -5034,10 +5043,11 @@ function actualizarMinimo(tipo, id, valor){
             <th style="text-align:center;color:#FF6B6B">⚠️<br>Rechazo</th>
             <th>Estado</th>
             <th>Notas</th>
+            <th>Acciones</th>
           </tr>
         </thead>
         <tbody id="flujoTbody">
-          <tr><td colspan="12" style="text-align:center;padding:40px;color:var(--mute)">Cargando órdenes...</td></tr>
+          <tr><td colspan="15" style="text-align:center;padding:40px;color:var(--mute)">Cargando órdenes...</td></tr>
         </tbody>
       </table>
     </div>

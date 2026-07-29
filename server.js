@@ -230,7 +230,7 @@ const server = http.createServer(async (req, res) => {
 
       const { fixed, extra } = splitPedido(pedido);
       await db.execute({
-        sql: `INSERT INTO pedidos (nota, cliente, telefono, servicio, fecha, hora, fecha_entrega, total, anticipo, estado, observaciones, extra)
+        sql: `INSERT OR REPLACE INTO pedidos (nota, cliente, telefono, servicio, fecha, hora, fecha_entrega, total, anticipo, estado, observaciones, extra)
               VALUES (?,?,?,?,?,?,?,?,?,?,?,?)`,
         args: [
           String(fixed.nota), fixed.cliente, fixed.telefono || '', fixed.servicio,
@@ -322,8 +322,10 @@ const server = http.createServer(async (req, res) => {
         for (let i = 0; i < itemsParaFlujo.length; i++) {
           const item = itemsParaFlujo[i];
           const notaFlujo = i === 0 ? String(pedido.nota) : `${pedido.nota}-${i + 1}`;
+          // OR REPLACE: si la nota ya existía (ej. un pedido de prueba borrado que dejó
+          // huérfana su fila de flujo), se sobrescribe en vez de tronar por nota duplicada.
           await db.execute({
-            sql: `INSERT INTO flujo_ordenes (nota, cliente, telefono, servicio, descripcion, cristal, ml, impresion, total, fecha_entrega, fecha_creacion, notas, estado)
+            sql: `INSERT OR REPLACE INTO flujo_ordenes (nota, cliente, telefono, servicio, descripcion, cristal, ml, impresion, total, fecha_entrega, fecha_creacion, notas, estado)
                   VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)`,
             args: [
               notaFlujo, pedido.cliente, pedido.telefono || '', pedido.servicio,
@@ -400,6 +402,9 @@ const server = http.createServer(async (req, res) => {
     try {
       const { nota } = await readBody(req);
       await db.execute({ sql: 'DELETE FROM pedidos WHERE nota = ?', args: [String(nota)] });
+      // Limpia también las filas de flujo de ese pedido (nota exacta y sufijos -2, -3…)
+      // para no dejar huérfanas que choquen si la nota se reutiliza después.
+      await db.execute({ sql: "DELETE FROM flujo_ordenes WHERE nota = ? OR nota LIKE ?", args: [String(nota), `${nota}-%`] });
       console.log(`🗑  Pedido #${nota} eliminado`);
       return json(res, { success: true });
     } catch(e) {
