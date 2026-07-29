@@ -389,7 +389,7 @@ function renderT(){
       <td class="mo" style="color:${saldo>0?'#E05A00':'var(--green)'}">${mx(saldo)}</td>
       <td><span class="badge ${badgeCls}">${p.estado||'Pendiente'}</span></td>
       <td style="display:flex;gap:4px">
-        <button class="bd" title="Ver detalle" onclick="verDetalle('${p.nota}')" style="color:#555">👁️</button>
+        <button class="bd" title="Ver detalle" onclick="verDetalle('${p.nota}')" style="color:#555">🔍</button>
         <button class="bd" title="Editar" onclick="abrirEditar('${p.nota}')" style="color:#1565C0">✏️</button>
         <button class="bd" onclick="eliminar('${p.nota}')">🗑</button>
       </td>
