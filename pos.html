@@ -510,6 +510,19 @@ input[type=file]{display:none}
 .eb-material{background:#E8F4FD;color:#1565C0}
 .eb-armado{background:#F3E5F5;color:#7B1FA2}
 .eb-listo{background:#F0FFF4;color:#1a8a3a}
+.kanban-board{display:flex;gap:12px;overflow-x:auto;padding-bottom:8px}
+.kanban-col{flex:0 0 230px;background:var(--off);border-radius:12px;padding:10px}
+.kanban-col-title{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px}
+.kanban-card{background:var(--W);border:1px solid var(--brd);border-radius:10px;padding:10px;margin-bottom:8px}
+.kanban-card-head{display:flex;justify-content:space-between;align-items:flex-start;gap:6px;cursor:pointer}
+.kanban-nota{font-family:'Playfair Display',serif;font-weight:700;font-size:13px}
+.kanban-cliente{font-size:12px;color:var(--K)}
+.kanban-desc{font-size:11px;color:var(--mute);margin:4px 0 8px;line-height:1.5}
+.kanban-next-btn{width:100%;font-size:11px;font-weight:700;padding:7px;border-radius:7px;border:none;background:var(--K);color:var(--Y);cursor:pointer;font-family:'DM Sans',sans-serif}
+.kanban-expand{margin-top:8px;padding-top:8px;border-top:1px solid var(--brd)}
+.kanban-etapa-chip{font-size:11px;padding:6px 10px;border-radius:14px;cursor:pointer;font-family:'DM Sans',sans-serif;border:1px solid var(--brd);background:var(--W);color:var(--K)}
+.kanban-etapa-chip.on{border-color:#1a8a3a;background:#F0FFF4;color:#1a8a3a}
+.kanban-etapa-chip.rechazo.on{border-color:#A32D2D;background:#FFEBEB;color:#A32D2D}
 .eb-pendiente{background:var(--off);color:var(--mute)}
 
 /* ── INVENTARIO ── */
@@ -4695,51 +4708,88 @@ var RECHAZO_ITEMS = [
   {key:'cristalRechazado', label:'Cristal'}
 ];
 
+// Columnas del tablero, en orden, con la casilla que avanza cada una a la siguiente
+var FLUJO_COLUMNAS = [
+  {estado:'Pendiente',           cls:'eb-pendiente', siguienteLabel:'Marco pedido',      siguienteKey:'marcoProveedorPedido'},
+  {estado:'En proceso',          cls:'eb-proceso',   siguienteLabel:'Material recibido', siguienteKey:'materialRecibido'},
+  {estado:'Material recibido',   cls:'eb-material',  siguienteLabel:'Armado',            siguienteKey:'armado'},
+  {estado:'Armado',              cls:'eb-armado',    siguienteLabel:'Listo entrega',     siguienteKey:'listoEntrega'},
+  {estado:'Listo para entregar', cls:'eb-listo',     siguienteLabel:null,                siguienteKey:null}
+];
+
+var FLUJO_EXPANDIDO = {}; // qué tarjetas están abiertas, se conserva al refrescar
+
 function cargarFlujo(){
   fetch(SERVER+'/flujo').then(function(r){return r.json();}).then(function(d){
     var ordenes = (d.ordenes||[]).filter(function(o){return o.estado!=='Entregado';});
-    var tbody = document.getElementById('flujoTbody');
-    if(!tbody) return;
+    var board = document.getElementById('flujoBoard');
+    if(!board) return;
     if(ordenes.length===0){
-      tbody.innerHTML='<tr><td colspan="15" style="text-align:center;padding:40px;color:var(--mute)">Sin órdenes activas — los marcos personalizados aparecen aquí al guardarse</td></tr>';
+      board.innerHTML='<div style="text-align:center;padding:40px;color:var(--mute);width:100%">Sin órdenes activas — los marcos personalizados aparecen aquí al guardarse</div>';
       return;
     }
     var html='';
-    ordenes.forEach(function(o){
-      var badgeCls = o.estado==='Listo para entregar'?'eb-listo':o.estado==='Armado'?'eb-armado':o.estado==='Material recibido'?'eb-material':o.estado==='En proceso'?'eb-proceso':'eb-pendiente';
-      html+='<tr>';
-      html+='<td style="font-family:\'Playfair Display\',serif;font-weight:700">#'+o.nota+'</td>';
-      html+='<td><strong>'+o.cliente+'</strong><br><span style="font-size:10px;color:var(--mute)">'+o.telefono+'</span></td>';
-      html+='<td style="font-size:11px;max-width:140px">'+o.descripcion+'<br><span style="color:var(--mute)">'+o.cristal+(o.ml?' · ML':'')+'</span></td>';
-      html+='<td style="font-size:11px;color:var(--mute)">'+o.fechaEntrega+'</td>';
-      ETAPAS_CONFIG.forEach(function(e){
-        var skip = e.condicion && !o[e.condicion];
-        if(skip){
-          html+='<td style="text-align:center;color:var(--brd)">—</td>';
-        } else {
-          var checked = o.etapas[e.key] ? 'checked' : '';
-          html+='<td><label class="etapa-check"><input type="checkbox" '+checked+' onchange="actualizarEtapa(\''+o.nota+'\',\''+e.key+'\',this.checked)"/></label></td>';
-        }
-      });
-      // Rechazo cell
-      var rechazados = RECHAZO_ITEMS.filter(function(r){return o.etapas[r.key];}).map(function(r){return r.label;});
-      var rechazoCls = rechazados.length>0?'background:#FFEBEB;border-radius:6px;padding:4px 8px;font-size:11px;font-weight:700;color:#A32D2D':'';
-      html+='<td style="text-align:center"><div style="'+rechazoCls+'">';
-      if(rechazados.length>0) html+=rechazados.join(', ')+' ↩';
-      RECHAZO_ITEMS.forEach(function(r){
-        var checked=o.etapas[r.key]?'checked':'';
-        html+='<div style="font-size:10px;color:var(--mute)"><label style="cursor:pointer;display:flex;align-items:center;gap:3px;justify-content:center"><input type="checkbox" '+checked+' onchange="actualizarEtapa(\''+o.nota+'\',\''+r.key+'\',this.checked)" style="accent-color:#A32D2D"/> '+r.label+'</label></div>';
-      });
-      html+='</div></td>';
-      html+='<td><span class="estado-badge '+badgeCls+'">'+o.estado+'</span></td>';
-      html+='<td><input class="flujo-nota-field" value="'+(o.notas||'')+'" placeholder="Notas..." onblur="guardarNotaFlujo(\''+o.nota+'\',this.value)"/></td>';
-      html+='<td><button onclick="eliminarFlujo(\''+o.nota+'\')" title="Eliminar orden de flujo" style="background:rgba(163,45,45,.1);border:none;color:#A32D2D;border-radius:6px;padding:6px 9px;cursor:pointer;font-size:13px">🗑</button></td>';
-      html+='</tr>';
+    FLUJO_COLUMNAS.forEach(function(col){
+      var items = ordenes.filter(function(o){return o.estado===col.estado;});
+      html+='<div class="kanban-col">';
+      html+='<span class="kanban-col-title estado-badge '+col.cls+'">'+col.estado+' · '+items.length+'</span>';
+      html+='<div style="margin-top:10px">';
+      if(!items.length){
+        html+='<div style="font-size:11px;color:var(--mute);text-align:center;padding:16px 4px">Sin pedidos</div>';
+      } else {
+        items.forEach(function(o){ html+=renderKanbanCard(o,col); });
+      }
+      html+='</div></div>';
     });
-    tbody.innerHTML=html;
+    board.innerHTML=html;
   }).catch(function(e){
-    document.getElementById('flujoTbody').innerHTML='<tr><td colspan="15" style="text-align:center;padding:20px;color:#E05A00">Error al cargar: '+e.message+'</td></tr>';
+    document.getElementById('flujoBoard').innerHTML='<div style="text-align:center;padding:20px;color:#E05A00;width:100%">Error al cargar: '+e.message+'</div>';
   });
+}
+
+function renderKanbanCard(o, col){
+  var expanded = !!FLUJO_EXPANDIDO[o.nota];
+  var html = '<div class="kanban-card">';
+  html += '<div class="kanban-card-head" onclick="toggleFlujoCard(\''+o.nota+'\')">';
+  html += '<div><div class="kanban-nota">#'+o.nota+'</div><div class="kanban-cliente">'+o.cliente+'</div></div>';
+  html += '<span style="color:var(--mute);font-size:12px">'+(expanded?'▲':'▼')+'</span>';
+  html += '</div>';
+  html += '<div class="kanban-desc" onclick="toggleFlujoCard(\''+o.nota+'\')" style="cursor:pointer">'+o.descripcion+'<br>'+o.cristal+(o.ml?' · ML':'')+' · Entrega '+(o.fechaEntrega||'—')+'</div>';
+
+  if(!expanded){
+    if(col.siguienteKey){
+      html += '<button class="kanban-next-btn" onclick="avanzarEtapa(\''+o.nota+'\',\''+col.siguienteKey+'\')">→ '+col.siguienteLabel+'</button>';
+    } else {
+      html += '<div style="font-size:11px;color:#1a8a3a;text-align:center;padding:5px">✅ Última etapa</div>';
+    }
+  } else {
+    html += '<div class="kanban-expand">';
+    html += '<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px">';
+    ETAPAS_CONFIG.forEach(function(e){
+      if(e.condicion && !o[e.condicion]) return;
+      var on = !!o.etapas[e.key];
+      html += '<button class="kanban-etapa-chip'+(on?' on':'')+'" onclick="actualizarEtapa(\''+o.nota+'\',\''+e.key+'\','+(!on)+')">'+(on?'✓ ':'')+e.label+'</button>';
+    });
+    RECHAZO_ITEMS.forEach(function(r){
+      var on = !!o.etapas[r.key];
+      html += '<button class="kanban-etapa-chip rechazo'+(on?' on':'')+'" onclick="actualizarEtapa(\''+o.nota+'\',\''+r.key+'\','+(!on)+')">'+(on?'↩ ':'')+r.label+' rechazado</button>';
+    });
+    html += '</div>';
+    html += '<input class="flujo-nota-field" style="width:100%;margin-bottom:8px;box-sizing:border-box" value="'+(o.notas||'')+'" placeholder="Notas..." onblur="guardarNotaFlujo(\''+o.nota+'\',this.value)"/>';
+    html += '<button onclick="eliminarFlujo(\''+o.nota+'\')" style="width:100%;font-size:11px;padding:7px;border-radius:7px;border:none;background:rgba(163,45,45,.1);color:#A32D2D;cursor:pointer;font-family:\'DM Sans\',sans-serif">🗑 Eliminar orden de flujo</button>';
+    html += '</div>';
+  }
+  html += '</div>';
+  return html;
+}
+
+function toggleFlujoCard(nota){
+  FLUJO_EXPANDIDO[nota] = !FLUJO_EXPANDIDO[nota];
+  cargarFlujo();
+}
+
+function avanzarEtapa(nota, etapaKey){
+  actualizarEtapa(nota, etapaKey, true);
 }
 
 function eliminarFlujo(nota){
@@ -5025,31 +5075,8 @@ function actualizarMinimo(tipo, id, valor){
       </div>
       <button class="btn-yellow" onclick="cargarFlujo()" style="padding:9px 18px;background:var(--Y);border:none;border-radius:8px;font-size:13px;font-weight:700;font-family:'DM Sans',sans-serif;cursor:pointer">↻ Actualizar</button>
     </div>
-    <div style="overflow-x:auto;background:var(--W);border-radius:12px;border:1px solid var(--brd)">
-      <table class="flujo-table">
-        <thead>
-          <tr>
-            <th>#Nota</th>
-            <th>Cliente</th>
-            <th>Descripción</th>
-            <th>Entrega</th>
-            <th style="text-align:center">Marco<br>Pedido</th>
-            <th style="text-align:center">Cristal<br>Pedido</th>
-            <th style="text-align:center">Foto<br>Solicitada</th>
-            <th style="text-align:center">ML<br>Solicitada</th>
-            <th style="text-align:center">Material<br>Recibido</th>
-            <th style="text-align:center">Armado</th>
-            <th style="text-align:center">Listo<br>Entrega</th>
-            <th style="text-align:center;color:#FF6B6B">⚠️<br>Rechazo</th>
-            <th>Estado</th>
-            <th>Notas</th>
-            <th>Acciones</th>
-          </tr>
-        </thead>
-        <tbody id="flujoTbody">
-          <tr><td colspan="15" style="text-align:center;padding:40px;color:var(--mute)">Cargando órdenes...</td></tr>
-        </tbody>
-      </table>
+    <div id="flujoBoard" class="kanban-board">
+      <div style="text-align:center;padding:40px;color:var(--mute);width:100%">Cargando órdenes...</div>
     </div>
   </div>
 </div>
