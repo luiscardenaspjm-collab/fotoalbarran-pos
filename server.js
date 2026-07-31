@@ -381,18 +381,40 @@ const server = http.createServer(async (req, res) => {
 
   if (req.method === 'POST' && url === '/editarPedido') {
     try {
-      const { nota, campos } = await readBody(req);
+      const { nota, campos, nuevaNota } = await readBody(req);
+      let notaActual = String(nota);
+
+      // Si se pide cambiar el número de pedido/nota
+      if (nuevaNota !== undefined && nuevaNota !== null && String(nuevaNota).trim() !== '' && String(nuevaNota).trim() !== notaActual) {
+        const nuevaStr = String(nuevaNota).trim();
+        const existe = await db.execute({ sql: 'SELECT nota FROM pedidos WHERE nota = ?', args: [nuevaStr] });
+        if (existe.rows.length) {
+          return json(res, { success: false, error: `Ya existe un pedido con el número #${nuevaStr}` }, 400);
+        }
+        await db.execute({ sql: 'UPDATE pedidos SET nota = ? WHERE nota = ?', args: [nuevaStr, notaActual] });
+        // Arrastra el cambio a Flujo de Trabajo, incluyendo sufijos de multi-marco (#1042-2, #1042-3...)
+        const filasFlujo = await db.execute({ sql: 'SELECT nota FROM flujo_ordenes WHERE nota = ? OR nota LIKE ?', args: [notaActual, `${notaActual}-%`] });
+        for (const fila of filasFlujo.rows) {
+          const notaVieja = String(fila.nota);
+          const sufijo = notaVieja === notaActual ? '' : notaVieja.slice(notaActual.length);
+          const notaNueva = nuevaStr + sufijo;
+          await db.execute({ sql: 'UPDATE flujo_ordenes SET nota = ? WHERE nota = ?', args: [notaNueva, notaVieja] });
+        }
+        console.log(`🔀 Pedido renombrado de #${notaActual} a #${nuevaStr}`);
+        notaActual = nuevaStr;
+      }
+
       const COLMAP = { cliente:'cliente', telefono:'telefono', fechaEntrega:'fecha_entrega', fecha:'fecha', observaciones:'observaciones', anticipo:'anticipo', estado:'estado' };
       const sets = [], args = [];
       Object.keys(campos||{}).forEach(k => {
         if (COLMAP[k] && campos[k] !== undefined) { sets.push(`${COLMAP[k]} = ?`); args.push(campos[k]); }
       });
       if (sets.length) {
-        args.push(String(nota));
+        args.push(notaActual);
         await db.execute({ sql: `UPDATE pedidos SET ${sets.join(', ')} WHERE nota = ?`, args });
       }
-      console.log(`✏️  Pedido #${nota} editado`);
-      return json(res, { success: true });
+      console.log(`✏️  Pedido #${notaActual} editado`);
+      return json(res, { success: true, nota: notaActual });
     } catch(e) {
       return json(res, { success: false, error: e.message }, 500);
     }

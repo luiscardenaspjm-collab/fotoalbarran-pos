@@ -254,6 +254,7 @@ tr:hover td{background:var(--off)}
     <div class="modal-title">Editar Pedido <span id="editNota" style="color:#B8860B"></span></div>
     <div class="modal-sub">Solo se modifican los campos que cambies</div>
     <div class="modal-grid">
+      <div><label class="modal-label">Número de pedido / nota</label><input id="editNumNota" class="modal-input" placeholder="0582"/></div>
       <div><label class="modal-label">Cliente</label><input id="editCliente" class="modal-input" placeholder="Nombre"/></div>
       <div><label class="modal-label">Teléfono</label><input id="editTel" class="modal-input" placeholder="477 123 4567"/></div>
       <div class="modal-row">
@@ -504,6 +505,7 @@ function abrirEditar(nota){
   if(!p) return;
   EDIT_NOTA=nota;
   document.getElementById('editNota').textContent='#'+nota;
+  document.getElementById('editNumNota').value=nota;
   document.getElementById('editCliente').value=p.cliente||'';
   document.getElementById('editTel').value=p.telefono||'';
   document.getElementById('editAnticipo').value=p.anticipo||0;
@@ -539,9 +541,20 @@ function guardarEdicion(){
     observaciones: document.getElementById('editObs').value.trim()
   };
   if(!fechaPedidoRaw) delete campos.fecha; // don't overwrite if blank
+  var nuevaNota=(document.getElementById('editNumNota').value||'').trim();
+  if(nuevaNota && nuevaNota!==String(EDIT_NOTA)){
+    if(!confirm('¿Cambiar el número de pedido de #'+EDIT_NOTA+' a #'+nuevaNota+'?\nEsto también actualiza sus registros en Flujo de Trabajo.')) return;
+  } else {
+    nuevaNota=undefined;
+  }
+  var body={nota:EDIT_NOTA,campos};
+  if(nuevaNota) body.nuevaNota=nuevaNota;
   fetch(BASE+'/editarPedido',{method:'POST',headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({nota:EDIT_NOTA,campos})
-  }).then(()=>{cerrarEditar();cargar();}).catch(e=>alert('Error: '+e.message));
+    body:JSON.stringify(body)
+  }).then(r=>r.json()).then(d=>{
+    if(d.success===false){alert('Error: '+(d.error||'No se pudo guardar')); return;}
+    cerrarEditar();cargar();
+  }).catch(e=>alert('Error: '+e.message));
 }
 document.getElementById('editModal').addEventListener('click',function(e){if(e.target===this)cerrarEditar();});
 
