@@ -524,6 +524,16 @@ input[type=file]{display:none}
 .kanban-etapa-chip.on{border-color:#1a8a3a;background:#F0FFF4;color:#1a8a3a}
 .kanban-etapa-chip.rechazo.on{border-color:#A32D2D;background:#FFEBEB;color:#A32D2D}
 .eb-pendiente{background:var(--off);color:var(--mute)}
+.kanban-prov-label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--mute);margin:10px 0 6px}
+.kanban-etapa-chip.prov.on{border-color:#1565C0;background:#E8F4FD;color:#1565C0}
+
+/* ── RECOLECCIÓN ── */
+.recol-group{background:var(--W);border:1px solid var(--brd);border-radius:12px;padding:14px 16px;margin-bottom:14px}
+.recol-group-title{font-family:'Playfair Display',serif;font-weight:700;font-size:15px;display:flex;align-items:center;gap:8px}
+.recol-count{background:var(--off);color:var(--K);font-family:'DM Sans',sans-serif;font-size:11px;font-weight:700;padding:2px 9px;border-radius:10px}
+.recol-item{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 0;border-top:1px solid var(--brd);font-size:12px}
+.recol-item:first-of-type{border-top:none}
+.recol-recibido-btn{font-size:11px;font-weight:700;padding:6px 12px;border-radius:7px;border:1px solid #1a8a3a;background:#F0FFF4;color:#1a8a3a;cursor:pointer;font-family:'DM Sans',sans-serif;white-space:nowrap}
 
 /* ── INVENTARIO ── */
 .inv-wrap{max-width:800px;margin:0 auto;padding:24px 20px 60px}
@@ -625,6 +635,7 @@ input[type=file]{display:none}
 <nav class="tab-nav">
   <button class="tab-btn active" onclick="switchTab('pos',this)">🏷️ &nbsp;PDV</button>
   <button class="tab-btn" onclick="switchTab('flujo',this)">🔧 &nbsp;Flujo de Trabajo</button>
+  <button class="tab-btn" onclick="switchTab('recoleccion',this)">🚚 &nbsp;Recolección</button>
   <button class="tab-btn" onclick="switchTab('inventario',this)">📦 &nbsp;Inventario</button>
 <button class="tab-btn" onclick="toggleBusquedaPOS()" style="margin-left:auto;background:var(--off)">🔍 Buscar pedido</button>
 </nav>
@@ -4679,7 +4690,7 @@ function imprimirCotizacion(){
 }
 
 // ─── TAB SWITCHING ───────────────────────────────────────────────────────────
-var TAB_IDS = {pos:'tabPOS', flujo:'tabFlujo', inventario:'tabInventario'};
+var TAB_IDS = {pos:'tabPOS', flujo:'tabFlujo', recoleccion:'tabRecoleccion', inventario:'tabInventario'};
 
 function switchTab(tab, btn){
   document.querySelectorAll('.tab-content').forEach(function(el){el.classList.remove('active');});
@@ -4688,9 +4699,17 @@ function switchTab(tab, btn){
   if(el) el.classList.add('active');
   btn.classList.add('active');
   if(tab==='flujo') cargarFlujo();
+  if(tab==='recoleccion') cargarRecoleccion();
   if(tab==='inventario') cargarStock();
   window.scrollTo({top:0,behavior:'smooth'});
 }
+
+// ─── PROVEEDORES ─────────────────────────────────────────────────────────────
+var PROVEEDORES_LISTA = [
+  {id:'mexicana',    label:'Mexicana (Marcos A)'},
+  {id:'mas_marcos',  label:'Más Marcos (Marcos B)'},
+  {id:'wundervent',  label:'Wundervent (Cristales)'}
+];
 
 // ─── FLUJO DE TRABAJO ────────────────────────────────────────────────────────
 var ETAPAS_CONFIG = [
@@ -4718,10 +4737,12 @@ var FLUJO_COLUMNAS = [
 ];
 
 var FLUJO_EXPANDIDO = {}; // qué tarjetas están abiertas, se conserva al refrescar
+var FLUJO_ORDENES_CACHE = []; // última copia de /flujo, usada por los chips de proveedor
 
 function cargarFlujo(){
   fetch(SERVER+'/flujo').then(function(r){return r.json();}).then(function(d){
     var ordenes = (d.ordenes||[]).filter(function(o){return o.estado!=='Entregado';});
+    FLUJO_ORDENES_CACHE = ordenes;
     var board = document.getElementById('flujoBoard');
     if(!board) return;
     if(ordenes.length===0){
@@ -4775,6 +4796,13 @@ function renderKanbanCard(o, col){
       html += '<button class="kanban-etapa-chip rechazo'+(on?' on':'')+'" onclick="actualizarEtapa(\''+o.nota+'\',\''+r.key+'\','+(!on)+')">'+(on?'↩ ':'')+r.label+' rechazado</button>';
     });
     html += '</div>';
+    html += '<div class="kanban-prov-label">🚚 Proveedor(es) a contactar</div>';
+    html += '<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px">';
+    PROVEEDORES_LISTA.forEach(function(pv){
+      var on = (o.proveedores||[]).indexOf(pv.id) > -1;
+      html += '<button class="kanban-etapa-chip prov'+(on?' on':'')+'" onclick="toggleProveedor(\''+o.nota+'\',\''+pv.id+'\')">'+(on?'✓ ':'')+pv.label+'</button>';
+    });
+    html += '</div>';
     html += '<input class="flujo-nota-field" style="width:100%;margin-bottom:8px;box-sizing:border-box" value="'+(o.notas||'')+'" placeholder="Notas..." onblur="guardarNotaFlujo(\''+o.nota+'\',this.value)"/>';
     html += '<button onclick="eliminarFlujo(\''+o.nota+'\')" style="width:100%;font-size:11px;padding:7px;border-radius:7px;border:none;background:rgba(163,45,45,.1);color:#A32D2D;cursor:pointer;font-family:\'DM Sans\',sans-serif">🗑 Eliminar orden de flujo</button>';
     html += '</div>';
@@ -4805,6 +4833,61 @@ function actualizarEtapa(nota, etapa, valor){
     method:'POST',headers:{'Content-Type':'application/json'},
     body:JSON.stringify({nota:nota,etapa:etapa,valor:valor})
   }).then(function(){ cargarFlujo(); }).catch(function(e){alert('Error: '+e.message);});
+}
+
+function toggleProveedor(nota, id){
+  var o = FLUJO_ORDENES_CACHE.find(function(x){return String(x.nota)===String(nota);});
+  var actuales = (o && o.proveedores) ? o.proveedores.slice() : [];
+  var idx = actuales.indexOf(id);
+  if(idx>-1) actuales.splice(idx,1); else actuales.push(id);
+  fetch(SERVER+'/flujo/proveedores',{
+    method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({nota:nota,proveedores:actuales})
+  }).then(function(){ cargarFlujo(); }).catch(function(e){alert('Error: '+e.message);});
+}
+
+// ─── RECOLECCIÓN ─────────────────────────────────────────────────────────────
+function cargarRecoleccion(){
+  fetch(SERVER+'/flujo').then(function(r){return r.json();}).then(function(d){
+    var ordenes = (d.ordenes||[]).filter(function(o){return o.estado!=='Entregado' && !o.etapas.materialRecibido;});
+    var board = document.getElementById('recoleccionBoard');
+    if(!board) return;
+    var html='';
+    PROVEEDORES_LISTA.forEach(function(pv){
+      var items = ordenes.filter(function(o){ return (o.proveedores||[]).indexOf(pv.id) > -1; });
+      html += '<div class="recol-group"><div class="recol-group-title">'+pv.label+' <span class="recol-count">'+items.length+'</span></div>';
+      if(!items.length){
+        html += '<div style="font-size:12px;color:var(--mute);padding:8px 2px">Nada pendiente</div>';
+      } else {
+        items.forEach(function(o){
+          html += '<div class="recol-item"><div><strong>#'+o.nota+'</strong> · '+o.cliente+'<br>'
+                +  '<span style="color:var(--mute);font-size:11px">'+o.descripcion+(o.cristal&&o.cristal!=='—'?' · '+o.cristal:'')+' · Entrega '+(o.fechaEntrega||'—')+'</span></div>'
+                +  '<button class="recol-recibido-btn" onclick="actualizarEtapaYRecoleccion(\''+o.nota+'\')">✓ Recibido</button></div>';
+        });
+      }
+      html += '</div>';
+    });
+    var sinAsignar = ordenes.filter(function(o){ return !(o.proveedores&&o.proveedores.length); });
+    if(sinAsignar.length){
+      html += '<div class="recol-group" style="border-color:#E05A00"><div class="recol-group-title" style="color:#E05A00">⚠️ Sin proveedor asignado <span class="recol-count">'+sinAsignar.length+'</span></div>';
+      sinAsignar.forEach(function(o){
+        html += '<div class="recol-item"><div><strong>#'+o.nota+'</strong> · '+o.cliente+'<br>'
+              +  '<span style="color:var(--mute);font-size:11px">'+o.descripcion+' · Entrega '+(o.fechaEntrega||'—')+'</span></div>'
+              +  '<span style="font-size:11px;color:var(--mute)">Asígnalo en Flujo de Trabajo</span></div>';
+      });
+      html += '</div>';
+    }
+    board.innerHTML = html || '<div style="text-align:center;padding:40px;color:var(--mute)">Nada pendiente de recoger 🎉</div>';
+  }).catch(function(e){
+    document.getElementById('recoleccionBoard').innerHTML='<div style="text-align:center;padding:20px;color:#E05A00">Error al cargar: '+e.message+'</div>';
+  });
+}
+
+function actualizarEtapaYRecoleccion(nota){
+  fetch(SERVER+'/flujo/actualizarEtapa',{
+    method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({nota:nota,etapa:'materialRecibido',valor:true})
+  }).then(function(){ cargarRecoleccion(); }).catch(function(e){alert('Error: '+e.message);});
 }
 
 function guardarNotaFlujo(nota, texto){
@@ -5077,6 +5160,22 @@ function actualizarMinimo(tipo, id, valor){
     </div>
     <div id="flujoBoard" class="kanban-board">
       <div style="text-align:center;padding:40px;color:var(--mute);width:100%">Cargando órdenes...</div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ TAB RECOLECCIÓN ═══════════════════════════════════ -->
+<div id="tabRecoleccion" class="tab-content">
+  <div class="flujo-wrap">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
+      <div>
+        <h2 class="card-title" style="margin:0">Recolección</h2>
+        <p class="card-sub" style="margin:4px 0 0">Qué falta recoger de cada proveedor, según los pedidos levantados</p>
+      </div>
+      <button class="btn-yellow" onclick="cargarRecoleccion()" style="padding:9px 18px;background:var(--Y);border:none;border-radius:8px;font-size:13px;font-weight:700;font-family:'DM Sans',sans-serif;cursor:pointer">↻ Actualizar</button>
+    </div>
+    <div id="recoleccionBoard">
+      <div style="text-align:center;padding:40px;color:var(--mute)">Cargando...</div>
     </div>
   </div>
 </div>

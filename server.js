@@ -67,6 +67,7 @@ function rowToOrden(row) {
       marcoRechazado:         !!row.marco_rechazado,
       cristalRechazado:       !!row.cristal_rechazado,
     },
+    proveedores: (() => { try { return JSON.parse(row.proveedores || '[]'); } catch(e) { return []; } })(),
   };
 }
 
@@ -74,6 +75,14 @@ function rowToOrden(row) {
 async function initSchema() {
   const sql = fs.readFileSync(path.join(__dirname, 'schema.sql'), 'utf8');
   await db.executeMultiple(sql);
+  // Migraciones ligeras: columnas añadidas después del primer deploy.
+  // ALTER TABLE ... ADD COLUMN falla si la columna ya existe — se ignora ese error.
+  const migraciones = [
+    "ALTER TABLE flujo_ordenes ADD COLUMN proveedores TEXT DEFAULT '[]'",
+  ];
+  for (const m of migraciones) {
+    try { await db.execute(m); } catch (e) { /* columna ya existe, ok */ }
+  }
   console.log('🗄️  Esquema Turso listo');
 }
 
@@ -381,7 +390,7 @@ const server = http.createServer(async (req, res) => {
 
   if (req.method === 'POST' && url === '/editarPedido') {
     try {
-      const { nota, campos, nuevaNota } = await readBody(req);
+      const { nota, campos, nuevaNota, proveedores } = await readBody(req);
       let notaActual = String(nota);
 
       // Si se pide cambiar el número de pedido/nota
@@ -413,8 +422,26 @@ const server = http.createServer(async (req, res) => {
         args.push(notaActual);
         await db.execute({ sql: `UPDATE pedidos SET ${sets.join(', ')} WHERE nota = ?`, args });
       }
+
+      // Proveedor(es) a contactar — se aplica a la orden de flujo base y a sus sufijos de multi-marco (-2, -3...)
+      if (proveedores !== undefined) {
+        const provJson = JSON.stringify(Array.isArray(proveedores) ? proveedores : []);
+        await db.execute({ sql: 'UPDATE flujo_ordenes SET proveedores = ? WHERE nota = ? OR nota LIKE ?', args: [provJson, notaActual, `${notaActual}-%`] });
+      }
+
       console.log(`✏️  Pedido #${notaActual} editado`);
       return json(res, { success: true, nota: notaActual });
+    } catch(e) {
+      return json(res, { success: false, error: e.message }, 500);
+    }
+  }
+
+  if (req.method === 'POST' && url === '/flujo/proveedores') {
+    try {
+      const { nota, proveedores } = await readBody(req);
+      const provJson = JSON.stringify(Array.isArray(proveedores) ? proveedores : []);
+      await db.execute({ sql: 'UPDATE flujo_ordenes SET proveedores = ? WHERE nota = ?', args: [provJson, String(nota)] });
+      return json(res, { success: true });
     } catch(e) {
       return json(res, { success: false, error: e.message }, 500);
     }

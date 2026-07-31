@@ -266,6 +266,20 @@ tr:hover td{background:var(--off)}
         <div></div>
       </div>
       <div><label class="modal-label">Observaciones</label><textarea id="editObs" class="modal-input" rows="2" placeholder="Notas..."></textarea></div>
+      <div id="editProveedoresWrap" style="display:none">
+        <label class="modal-label">Proveedor(es) a contactar</label>
+        <div style="display:flex;flex-wrap:wrap;gap:8px">
+          <label style="display:flex;align-items:center;gap:5px;font-size:12px;border:1.5px solid var(--brd);border-radius:8px;padding:6px 10px;cursor:pointer">
+            <input type="checkbox" id="editProvMexicana" value="mexicana"/> Mexicana (Marcos A)
+          </label>
+          <label style="display:flex;align-items:center;gap:5px;font-size:12px;border:1.5px solid var(--brd);border-radius:8px;padding:6px 10px;cursor:pointer">
+            <input type="checkbox" id="editProvMasMarcos" value="mas_marcos"/> Más Marcos (Marcos B)
+          </label>
+          <label style="display:flex;align-items:center;gap:5px;font-size:12px;border:1.5px solid var(--brd);border-radius:8px;padding:6px 10px;cursor:pointer">
+            <input type="checkbox" id="editProvWundervent" value="wundervent"/> Wundervent (Cristales)
+          </label>
+        </div>
+      </div>
     </div>
     <div class="modal-btns">
       <button class="btn-cancel" onclick="cerrarEditar()">Cancelar</button>
@@ -297,6 +311,7 @@ var VENTAS_DATA=[];
 var INV_CAT='papel';
 var EDIT_NOTA=null;
 var VER_NOTA=null;
+var FLUJO_DATA=[];
 
 // ── TAB SWITCHING ─────────────────────────────────────────────────────────────
 function switchTab(tab,btn){
@@ -320,8 +335,12 @@ function recargarTab(){
 
 // ── VENTAS ────────────────────────────────────────────────────────────────────
 function cargar(){
-  fetch(BASE+'/ventas').then(r=>r.json()).then(d=>{
+  Promise.all([
+    fetch(BASE+'/ventas').then(r=>r.json()),
+    fetch(BASE+'/flujo').then(r=>r.json()).catch(()=>({ordenes:[]}))
+  ]).then(([d,f])=>{
     PEDIDOS=(d.pedidos||[]).slice().reverse();
+    FLUJO_DATA=f.ordenes||[];
     renderK(); renderA(); renderT();
   }).catch(e=>console.warn('Ventas error:',e.message));
 }
@@ -519,6 +538,15 @@ function abrirEditar(nota){
   document.getElementById('editFechaPedido').value=toInputDate(p.fecha);
   document.getElementById('editFecha').value=p.fechaEntrega||'';
   document.getElementById('editObs').value=p.observaciones||'';
+
+  var esMarcoOFlotado=(p.servicio==='Marcos'||p.servicio==='Flotados');
+  document.getElementById('editProveedoresWrap').style.display=esMarcoOFlotado?'':'none';
+  var flujoRow=FLUJO_DATA.find(x=>String(x.nota)===String(nota));
+  var provActuales=(flujoRow&&flujoRow.proveedores)?flujoRow.proveedores:[];
+  document.getElementById('editProvMexicana').checked=provActuales.indexOf('mexicana')>-1;
+  document.getElementById('editProvMasMarcos').checked=provActuales.indexOf('mas_marcos')>-1;
+  document.getElementById('editProvWundervent').checked=provActuales.indexOf('wundervent')>-1;
+
   document.getElementById('editModal').classList.add('open');
 }
 function cerrarEditar(){document.getElementById('editModal').classList.remove('open');}
@@ -549,6 +577,13 @@ function guardarEdicion(){
   }
   var body={nota:EDIT_NOTA,campos};
   if(nuevaNota) body.nuevaNota=nuevaNota;
+  if(document.getElementById('editProveedoresWrap').style.display!=='none'){
+    var proveedores=[];
+    if(document.getElementById('editProvMexicana').checked) proveedores.push('mexicana');
+    if(document.getElementById('editProvMasMarcos').checked) proveedores.push('mas_marcos');
+    if(document.getElementById('editProvWundervent').checked) proveedores.push('wundervent');
+    body.proveedores=proveedores;
+  }
   fetch(BASE+'/editarPedido',{method:'POST',headers:{'Content-Type':'application/json'},
     body:JSON.stringify(body)
   }).then(r=>r.json()).then(d=>{
