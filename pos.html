@@ -4876,8 +4876,10 @@ function cargarRecoleccion(){
         html += '<div style="font-size:12px;color:var(--mute);padding:8px 2px">Nada pendiente</div>';
       } else {
         items.forEach(function(o){
-          html += '<div class="recol-item"><div><strong>#'+o.nota+'</strong> · '+o.cliente+'<br>'
-                +  '<span style="color:var(--mute);font-size:11px">'+o.descripcion+(o.cristal&&o.cristal!=='—'?' · '+o.cristal:'')+' · Entrega '+(o.fechaEntrega||'—')+'</span></div>'
+          html += '<div class="recol-item"><div>'
+                +  '<div style="font-weight:700;font-size:13px">'+o.descripcion+(o.cristal&&o.cristal!=='—'?' · '+o.cristal:'')+'</div>'
+                +  '<div style="color:var(--mute);font-size:11px;margin-top:2px">#'+o.nota+' · '+o.cliente+' · Entrega '+(o.fechaEntrega||'—')+'</div>'
+                +  '</div>'
                 +  '<button class="recol-recibido-btn" onclick="actualizarEtapaYRecoleccion(\''+o.nota+'\')">✓ Recibido</button></div>';
         });
       }
@@ -4887,8 +4889,10 @@ function cargarRecoleccion(){
     if(sinAsignar.length){
       html += '<div class="recol-group" style="border-color:#E05A00"><div class="recol-group-title" style="color:#E05A00">⚠️ Sin proveedor asignado <span class="recol-count">'+sinAsignar.length+'</span></div>';
       sinAsignar.forEach(function(o){
-        html += '<div class="recol-item"><div><strong>#'+o.nota+'</strong> · '+o.cliente+'<br>'
-              +  '<span style="color:var(--mute);font-size:11px">'+o.descripcion+' · Entrega '+(o.fechaEntrega||'—')+'</span></div>'
+        html += '<div class="recol-item"><div>'
+              +  '<div style="font-weight:700;font-size:13px">'+o.descripcion+(o.cristal&&o.cristal!=='—'?' · '+o.cristal:'')+'</div>'
+              +  '<div style="color:var(--mute);font-size:11px;margin-top:2px">#'+o.nota+' · '+o.cliente+' · Entrega '+(o.fechaEntrega||'—')+'</div>'
+              +  '</div>'
               +  '<span style="font-size:11px;color:var(--mute)">Asígnalo en Flujo de Trabajo</span></div>';
       });
       html += '</div>';
